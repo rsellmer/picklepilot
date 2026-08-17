@@ -53,6 +53,12 @@ export default function Home() {
     const partnerCount: Record<string, number> = {};
     const issues: string[] = [];
     lineup.forEach((row, rowIndex) => {
+      const roundPlayers = [...row.courts.flat(), ...row.rest];
+      const duplicates = [...new Set(roundPlayers.filter((name, index) => roundPlayers.indexOf(name) !== index))];
+      if (roundPlayers.length !== 8) issues.push(`Round ${row.round}: must contain exactly 8 player positions`);
+      duplicates.forEach(name => issues.push(`Round ${row.round}: ${name} appears more than once`));
+      const unknownPlayers = roundPlayers.filter(name => !players.some(player => player.name === name));
+      unknownPlayers.forEach(name => issues.push(`Round ${row.round}: unknown player ${name}`));
       row.rest.forEach(name => restCount[name]++);
       if (rowIndex && row.rest.some(name => lineup[rowIndex - 1].rest.includes(name))) issues.push(`Round ${row.round}: back-to-back rest`);
       row.courts.forEach((pair, courtIndex) => {
@@ -125,9 +131,9 @@ export default function Home() {
       </section>
       <section className="builder-lineup">
         <div className="builder-lineup-head"><div><p className="eyebrow">8 ROUNDS · 3 COURTS</p><h2>Your lineup</h2><p>Click two players in the same round to swap them while editing.</p></div><div className="section-actions"><button className={editing ? "edit-active" : "ghost-btn"} onClick={() => { setEditing(!editing); setSelected(null); }}>{editing ? "Finish editing" : "Edit lineup"}</button><button className="primary-btn" onClick={generate}>Recalculate ✦</button></div></div>
-        <div className={validation.issues.length ? "validation warning" : "validation success"}><strong>{validation.issues.length ? `${validation.issues.length} rule warning${validation.issues.length > 1 ? "s" : ""}` : "All lineup rules passed"}</strong><span>{validation.issues.length ? validation.issues.slice(0,2).join(" · ") : "Each player rests twice · No back-to-back rests · Required mixed doubles included · Partner limit respected"}</span></div>
+        <div className={validation.issues.length ? "validation warning" : "validation success"}><strong>{validation.issues.length ? `${validation.issues.length} blocking error${validation.issues.length > 1 ? "s" : ""}` : "All lineup rules passed"}</strong><span>{validation.issues.length ? validation.issues.slice(0,3).join(" · ") : "Each player appears once per round · Each player rests twice · No back-to-back rests · Required mixed doubles included · Partner limit respected"}</span></div>
         <LineupTable lineup={lineup} editing={editing} selected={selected} onSwap={swapPlayer} />
-        <div className="builder-footer"><span>Changes are checked automatically against competition rules.</span><button className="primary-btn" onClick={() => setNotice("Lineup saved successfully.")}>Save lineup →</button></div>
+        <div className="builder-footer"><span>{validation.issues.length ? "Fix all blocking errors before saving the lineup." : "Changes are checked automatically against competition rules."}</span><button className="primary-btn" disabled={validation.issues.length > 0 || available.length !== 8} title={validation.issues.length ? "Fix all blocking errors before saving" : "Save this lineup"} onClick={() => { if (!validation.issues.length) setNotice("Lineup saved successfully."); }}>Save lineup →</button></div>
       </section>
       {notice && <div className="toast">✓ {notice}</div>}
     </section>}
