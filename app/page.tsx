@@ -13,17 +13,18 @@ const players: Player[] = [
 ];
 
 const generatedLineup: Round[] = [
-  { round: 1, courts: [["Olivia","Mia"],["Sophie","Liam"],["Ethan","Lucas"]], rest: ["Emma","Noah"] },
-  { round: 2, courts: [["Sophie","Noah"],["Emma","Mia"],["Ethan","Lucas"]], rest: ["Olivia","Liam"] },
-  { round: 3, courts: [["Emma","Olivia"],["Liam","Lucas"],["Sophie","Noah"]], rest: ["Mia","Ethan"] },
-  { round: 4, courts: [["Emma","Olivia"],["Mia","Noah"],["Liam","Ethan"]], rest: ["Sophie","Lucas"] },
-  { round: 5, courts: [["Sophie","Ethan"],["Olivia","Mia"],["Noah","Lucas"]], rest: ["Emma","Liam"] },
-  { round: 6, courts: [["Emma","Mia"],["Sophie","Liam"],["Noah","Lucas"]], rest: ["Olivia","Ethan"] },
-  { round: 7, courts: [["Emma","Sophie"],["Liam","Ethan"],["Olivia","Noah"]], rest: ["Mia","Lucas"] },
+  { round: 1, courts: [["Olivia","Liam"],["Mia","Ethan"],["Sophie","Lucas"]], rest: ["Emma","Noah"] },
+  { round: 2, courts: [["Emma","Noah"],["Mia","Ethan"],["Sophie","Lucas"]], rest: ["Olivia","Liam"] },
+  { round: 3, courts: [["Emma","Noah"],["Olivia","Liam"],["Sophie","Lucas"]], rest: ["Mia","Ethan"] },
+  { round: 4, courts: [["Emma","Noah"],["Olivia","Liam"],["Mia","Ethan"]], rest: ["Sophie","Lucas"] },
+  { round: 5, courts: [["Olivia","Noah"],["Mia","Lucas"],["Sophie","Ethan"]], rest: ["Emma","Liam"] },
+  { round: 6, courts: [["Emma","Liam"],["Mia","Lucas"],["Sophie","Noah"]], rest: ["Olivia","Ethan"] },
+  { round: 7, courts: [["Emma","Liam"],["Olivia","Noah"],["Sophie","Ethan"]], rest: ["Mia","Lucas"] },
   { round: 8, courts: [["Emma","Liam"],["Olivia","Ethan"],["Mia","Lucas"]], rest: ["Sophie","Noah"] },
 ];
 
 const mixedRequired = new Set(["2-1","3-3","5-1","7-3"]);
+const isWomenPair = (pair: string[]) => pair.length === 2 && pair.every(name => players.find(p => p.name === name)?.gender === "W");
 
 function Sidebar({ builder, onNavigate }: { builder: boolean; onNavigate: (value: boolean) => void }) {
   return <aside className="sidebar">
@@ -62,6 +63,7 @@ export default function Home() {
       row.rest.forEach(name => restCount[name]++);
       if (rowIndex && row.rest.some(name => lineup[rowIndex - 1].rest.includes(name))) issues.push(`Round ${row.round}: back-to-back rest`);
       row.courts.forEach((pair, courtIndex) => {
+        if (isWomenPair(pair)) issues.push(`Round ${row.round}, court ${courtIndex + 1}: two women cannot play together`);
         const key = [...pair].sort().join("|");
         partnerCount[key] = (partnerCount[key] || 0) + 1;
         if (mixedRequired.has(`${row.round}-${courtIndex + 1}`)) {
@@ -76,6 +78,10 @@ export default function Home() {
   }, [lineup]);
 
   function generate() {
+    if (generatedLineup.some(row => row.courts.some(isWomenPair))) {
+      setNotice("Cannot generate lineup: two women cannot play together.");
+      return;
+    }
     setLineup(structuredClone(generatedLineup));
     setEditing(false); setSelected(null);
     setNotice(`Lineup generated for a ${opponent.toLowerCase()} opponent.`);
@@ -96,6 +102,11 @@ export default function Home() {
     [values[selected.index], values[position]] = [values[position], values[selected.index]];
     next[roundIndex].courts = [[values[0],values[1]],[values[2],values[3]],[values[4],values[5]]];
     next[roundIndex].rest = [values[6],values[7]];
+    if (next[roundIndex].courts.some(isWomenPair)) {
+      setNotice("Swap blocked: two women cannot play together.");
+      setSelected(null);
+      return;
+    }
     setLineup(next); setSelected(null);
   }
 
@@ -110,7 +121,7 @@ export default function Home() {
       <section className="stats-grid" aria-label="Team performance">
         <article><span>SEASON RECORD</span><strong>6–2</strong><small>2nd of 8 teams</small></article>
         <article><span>WIN RATE</span><strong>68%</strong><small className="positive">↑ 4% this month</small></article>
-        <article><span>TOP PAIR</span><strong className="pair-name">Emma + Olivia</strong><small>9 wins · 75%</small></article>
+        <article><span>TOP PAIR</span><strong className="pair-name">Emma + Noah</strong><small>9 wins · 75%</small></article>
         <article><span>NEXT OPPONENT</span><strong className="pair-name">{opponent}</strong><small>7–1 season record</small></article>
       </section>
       <section className="lineup-section">
@@ -131,7 +142,7 @@ export default function Home() {
       </section>
       <section className="builder-lineup">
         <div className="builder-lineup-head"><div><p className="eyebrow">8 ROUNDS · 3 COURTS</p><h2>Your lineup</h2><p>Click two players in the same round to swap them while editing.</p></div><div className="section-actions"><button className={editing ? "edit-active" : "ghost-btn"} onClick={() => { setEditing(!editing); setSelected(null); }}>{editing ? "Finish editing" : "Edit lineup"}</button><button className="primary-btn" onClick={generate}>Recalculate ✦</button></div></div>
-        <div className={validation.issues.length ? "validation warning" : "validation success"}><strong>{validation.issues.length ? `${validation.issues.length} blocking error${validation.issues.length > 1 ? "s" : ""}` : "All lineup rules passed"}</strong><span>{validation.issues.length ? validation.issues.slice(0,3).join(" · ") : "Each player appears once per round · Each player rests twice · No back-to-back rests · Required mixed doubles included · Partner limit respected"}</span></div>
+        <div className={validation.issues.length ? "validation warning" : "validation success"}><strong>{validation.issues.length ? `${validation.issues.length} blocking error${validation.issues.length > 1 ? "s" : ""}` : "All lineup rules passed"}</strong><span>{validation.issues.length ? validation.issues.slice(0,3).join(" · ") : "Each player appears once per round · Each player rests twice · No back-to-back rests · Required mixed doubles included · No women-only pairs · Partner limit respected"}</span></div>
         <LineupTable lineup={lineup} editing={editing} selected={selected} onSwap={swapPlayer} />
         <div className="builder-footer"><span>{validation.issues.length ? "Fix all blocking errors before saving the lineup." : "Changes are checked automatically against competition rules."}</span><button className="primary-btn" disabled={validation.issues.length > 0 || available.length !== 8} title={validation.issues.length ? "Fix all blocking errors before saving" : "Save this lineup"} onClick={() => { if (!validation.issues.length) setNotice("Lineup saved successfully."); }}>Save lineup →</button></div>
       </section>
