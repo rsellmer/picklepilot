@@ -1,0 +1,2 @@
+import { eq } from "drizzle-orm";import { getDb } from "../../../../db";import { appSessions } from "../../../../db/schema";import { hashToken, sessionToken } from "../security";
+export async function POST(request:Request){const token=sessionToken(request);if(token)await getDb().delete(appSessions).where(eq(appSessions.tokenHash,await hashToken(token)));return Response.json({ok:true},{headers:{"Set-Cookie":"picklepilot_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0"}})}

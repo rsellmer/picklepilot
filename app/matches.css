@@ -1,0 +1,31 @@
+.matches-content { padding-top: 38px; }
+.empty-matches { background:#fff; border:1px solid var(--line); border-radius:16px; padding:60px; text-align:center; }
+.empty-matches > span { display:grid; place-items:center; margin:0 auto 15px; width:48px; height:48px; border-radius:14px; background:var(--mint); font-size:22px; }
+.empty-matches h2 { margin-bottom:8px; }
+.empty-matches p { color:var(--muted); font-size:12px; margin-bottom:20px; }
+.matches-list { display:grid; gap:12px; }
+.match-card { display:grid; grid-template-columns:62px 1fr auto; align-items:center; gap:18px; background:#fff; border:1px solid var(--line); border-radius:14px; padding:18px 20px; }
+.match-date { display:grid; place-items:center; background:var(--mint); border-radius:11px; padding:9px; color:var(--green); }
+.match-date strong { font-size:22px; }
+.match-date span { font-size:9px; font-weight:800; letter-spacing:1px; }
+.match-info h2 { margin:3px 0 5px; font-size:18px; }
+.match-info h2 span { font-size:12px; color:#85918f; font-weight:400; margin:0 7px; }
+.match-info > p:last-child { margin:0; color:var(--muted); font-size:11px; }
+.match-actions { display:flex; align-items:center; gap:13px; }
+.saved-pill { font-size:10px; padding:7px 9px; border-radius:20px; background:#dff2e9; color:#176b58; font-weight:800; white-space:nowrap; }
+.completed-pill { font-size:10px; padding:7px 9px; border-radius:20px; background:#173f39; color:#fff; font-weight:800; white-space:nowrap; }
+.match-modal { width:min(620px,100%); max-height:90vh; overflow:auto; }
+.match-fields { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.match-fields select{display:block;width:100%;margin-top:8px;border:1px solid var(--line);border-radius:9px;padding:12px;background:#fff;color:#173432}.field-link{border:0;background:transparent;color:var(--green);padding:6px 0 0;font-size:9px;font-weight:800}
+.court-number-fields { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+.court-number-fields label { font-size:9px; color:#667572; }
+.court-number-fields input { margin-top:5px; }
+.match-modal .gender-options { grid-template-columns:repeat(3,1fr); }
+.match-player-picker { display:grid; grid-template-columns:repeat(2,1fr); gap:7px; margin-top:9px; }
+.match-player-picker button { display:flex; justify-content:space-between; border:1px solid var(--line); background:#fafaf7; border-radius:8px; padding:9px 11px; color:#687573; font-size:11px; }
+.match-player-picker button.selected { border-color:#54aa84; background:#eaf7f0; color:#155844; font-weight:800; }
+@media (max-width:650px) {
+  .match-card { grid-template-columns:48px 1fr; }
+  .match-actions { grid-column:1 / -1; justify-content:space-between; }
+  .match-fields, .match-player-picker { grid-template-columns:1fr; }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `team_settings` ADD `captain_name` text DEFAULT 'Captain' NOT NULL;

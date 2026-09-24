@@ -1,0 +1,5 @@
+import { eq } from "drizzle-orm";
+import { getDb } from "../../../../db";
+import { appSessions, appUsers } from "../../../../db/schema";
+import { hashPassword, hashToken, randomHex, sessionCookie } from "../security";
+export async function POST(request:Request){const input=await request.json() as {username?:string;password?:string};const username=input.username?.trim().toLowerCase();if(!username)return Response.json({error:"Invalid email or password"},{status:401});const [user]=await getDb().select().from(appUsers).where(eq(appUsers.username,username));if(!user||await hashPassword(input.password??"",user.passwordSalt)!==user.passwordHash)return Response.json({error:"Invalid email or password"},{status:401});const token=randomHex(),tokenHash=await hashToken(token),expiresAt=new Date(Date.now()+30*86400000).toISOString();await getDb().insert(appSessions).values({userId:user.id,tokenHash,expiresAt});return Response.json({user:{id:user.id,username:user.username,role:user.role,teamId:user.teamId}},{headers:{"Set-Cookie":sessionCookie(token)}})}

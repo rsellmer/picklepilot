@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./matches.css";
+import "./results.css";
+import "./reports.css";
+import "./print.css";
 
 export const metadata: Metadata = {
-  title: "PicklePilot",
-  description: "Smarter interclub pickleball lineups for captains.",
-  other: {
-    "codex-preview": "development",
-  },
+  title: "PicklePilot Captain",
+  description: "Independent pickleball lineup, results and reporting workspace for team captains.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
