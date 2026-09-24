@@ -1,0 +1,7 @@
+import { and, asc, eq } from "drizzle-orm";
+import { getDb } from "../../../db";
+import { seasons } from "../../../db/schema";
+import { requireUser } from "../auth/security";
+
+export async function GET(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const rows=await getDb().select().from(seasons).where(eq(seasons.teamId,auth.user!.teamId)).orderBy(asc(seasons.id));return Response.json({seasons:rows})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load seasons"},{status:500})}}
+export async function POST(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const input=await request.json() as {name?:string};const name=input.name?.trim();if(!name)return Response.json({error:"Season name is required"},{status:400});const db=getDb();const current=await db.select().from(seasons).where(and(eq(seasons.teamId,auth.user!.teamId),eq(seasons.status,"Active")));if(current.length)await Promise.all(current.map(season=>db.update(seasons).set({status:"Closed",closedAt:new Date().toISOString()}).where(eq(seasons.id,season.id))));const [season]=await db.insert(seasons).values({teamId:auth.user!.teamId,name,status:"Active"}).returning();return Response.json({season},{status:201})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to create season"},{status:500})}}

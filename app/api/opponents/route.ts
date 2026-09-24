@@ -1,0 +1,14 @@
+import { and, asc, eq } from "drizzle-orm";
+import { getDb } from "../../../db";
+import { opponents } from "../../../db/schema";
+import { requireUser } from "../auth/security";
+
+type OpponentInput={id?:number;city?:string;teamName?:string;defaultStrength?:"Weaker"|"Equal"|"Stronger";status?:"Active"|"Inactive"};
+
+export async function GET(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const rows=await getDb().select().from(opponents).where(eq(opponents.teamId,auth.user!.teamId)).orderBy(asc(opponents.city),asc(opponents.teamName));return Response.json({opponents:rows})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to load opponents"},{status:500})}}
+
+export async function POST(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const input=await request.json() as OpponentInput;const city=input.city?.trim(),teamName=input.teamName?.trim();if(!city||!teamName)return Response.json({error:"City and team are required"},{status:400});const [opponent]=await getDb().insert(opponents).values({city,teamName,defaultStrength:input.defaultStrength??"Equal",status:input.status??"Active",teamId:auth.user!.teamId}).returning();return Response.json({opponent},{status:201})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to save opponent"},{status:500})}}
+
+export async function PUT(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const input=await request.json() as OpponentInput;if(!input.id)return Response.json({error:"Opponent is required"},{status:400});const [opponent]=await getDb().update(opponents).set({...(input.city?.trim()?{city:input.city.trim()}:{}),...(input.teamName?.trim()?{teamName:input.teamName.trim()}:{}),...(input.defaultStrength?{defaultStrength:input.defaultStrength}:{}),...(input.status?{status:input.status}:{})}).where(and(eq(opponents.id,input.id),eq(opponents.teamId,auth.user!.teamId))).returning();if(!opponent)return Response.json({error:"Opponent not found"},{status:404});return Response.json({opponent})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to update opponent"},{status:500})}}
+
+export async function DELETE(request:Request){try{const auth=await requireUser(request);if(auth.response)return auth.response;const id=Number(new URL(request.url).searchParams.get("id"));if(!id)return Response.json({error:"Opponent is required"},{status:400});await getDb().delete(opponents).where(and(eq(opponents.id,id),eq(opponents.teamId,auth.user!.teamId)));return Response.json({success:true})}catch(error){return Response.json({error:error instanceof Error?error.message:"Unable to remove opponent"},{status:500})}}

@@ -1,0 +1,58 @@
+.builder-footer-actions { display:flex; gap:8px; }
+.dashboard-empty-lineup { display:flex; align-items:center; justify-content:center; gap:12px; min-height:150px; border:1px dashed #c9cec8; border-radius:12px; color:#657066; }
+.dashboard-empty-lineup span { font-size:28px; }
+.print-page { grid-column:2; min-height:100vh; padding:24px 30px 50px; overflow-x:auto; background:#ecece7; }
+.print-controls { display:flex; justify-content:space-between; max-width:1320px; margin:0 auto 18px; }
+.score-sheet { width:1280px; margin:auto; padding:8px; background:#fff; color:#050505; font-family:Arial,sans-serif; box-shadow:0 10px 35px rgba(0,0,0,.12); }
+.score-meta { display:grid; grid-template-columns:30% 43% 27%; min-height:78px; align-items:stretch; font-size:14px; }
+.score-date { display:grid; grid-template-columns:34% 66%; align-items:end; padding-bottom:5px; font-size:22px; }
+.score-date strong { padding:15px 8px; background:#d9f0d1; text-align:center; font-size:14px; }
+.score-team,.score-start { display:grid; grid-template-rows:1fr 1fr; }
+.score-team span,.score-start span { display:grid; grid-template-columns:38% 62%; align-items:center; }
+.score-team strong,.score-start strong { height:100%; display:flex; align-items:center; justify-content:center; padding:5px 8px; text-align:center; }
+.score-team span:first-child strong { background:#ffff98; }
+.score-team span:last-child strong { background:#c9eaf7; font-size:17px; }
+.score-start span:first-child strong { background:#fffed3; font-size:17px; }
+.score-start span:last-child strong { background:#d9f0d1; }
+.score-meta b { padding:0 9px; }
+.score-table { width:100%; border:3px solid #050505; border-collapse:collapse; table-layout:fixed; font-size:14px; }
+.score-table .round-col { width:8%; }.score-table .time-col { width:22%; }
+.score-table th,.score-table td { border:1px solid #111; padding:0 7px; }
+.score-table thead th { text-align:center; }
+.score-table thead>tr:first-child { height:31px; font-size:19px; }
+.score-table thead>tr:last-child { height:22px; font-weight:400; }
+.score-table .court-title,.score-table .side-title,.score-table tbody td:nth-child(n+3) { border-left:14px solid #050505; }
+.score-table .court-title { font-size:21px; }
+.score-table .side-title { font-weight:400; }
+.warmup-row { height:24px; text-align:center; }
+.warmup-row td:nth-child(n+3) { font-size:15px; }
+.score-round-row { height:46px; }
+.score-round-row>th { text-align:center; font-size:18px; }
+.score-round-row>td:nth-child(2) { text-align:center; white-space:nowrap; font-size:15px; }
+.score-round-row i { margin:0 12px; font-style:normal; }
+.score-pair { padding:0!important; }
+.score-pair span { display:block; min-height:21px; padding:3px 8px 1px; line-height:18px; }
+.score-pair .mixed-name { background:#efc8ee; }
+.score-break-row { height:20px; background:#d4d4d4; text-align:center; }
+.score-break-row td { padding:0; font-size:12px; }
+.score-total-row { height:27px; text-align:center; font-size:13px; }
+.score-total-row td:nth-child(2) { font-size:15px; }.score-total-row td:last-child { font-weight:700; }
+@media(max-width:900px){.print-page{grid-column:2;padding:20px}}
+@media(max-width:650px){.print-page{grid-column:1;padding:12px}.court-number-fields{grid-template-columns:1fr 1fr 1fr}}
+
+/* Keep this block after all responsive rules so mobile styles cannot alter paper output. */
+@page { size:letter landscape; margin:0.18in; }
+@media print {
+  html,body { width:auto!important; min-width:0!important; height:auto!important; margin:0!important; padding:0!important; overflow:visible!important; background:#fff!important; }
+  .sidebar,.mobile-nav,.print-controls,.logout-button { display:none!important; }
+  .app-shell { display:block!important; width:100%!important; min-height:0!important; }
+  .content { display:block!important; width:100%!important; max-width:none!important; height:auto!important; margin:0!important; padding:0!important; overflow:visible!important; }
+  .content > :not(.print-page) { display:none!important; }
+  .print-page { display:block!important; width:100%!important; height:auto!important; padding:0!important; margin:0!important; min-height:0!important; overflow:visible!important; background:#fff!important; break-after:avoid-page!important; page-break-after:avoid!important; }
+  /* `zoom` changes the layout size used by Chrome pagination. A transform only
+     changed the visual size and left a nearly empty second sheet. */
+  .score-sheet { box-sizing:border-box; width:1280px!important; max-width:none!important; height:auto!important; margin:0!important; padding:8px; overflow:visible!important; box-shadow:none; zoom:.78; transform:none!important; transform-origin:top left; break-inside:avoid-page!important; page-break-inside:avoid!important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+  .score-table { width:100%!important; min-width:0!important; table-layout:fixed!important; }
+  .score-table thead { display:table-row-group!important; }
+  .score-round-row,.score-break-row,.score-total-row { break-inside:avoid; page-break-inside:avoid; }
+}

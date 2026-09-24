@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./matches.css";
+import "./results.css";
+import "./reports.css";
+import "./print.css";
 
 export const metadata: Metadata = {
   title: "PicklePilot",
