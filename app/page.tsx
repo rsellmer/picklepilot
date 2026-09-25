@@ -190,6 +190,12 @@ const template = [
   ],
 ];
 const mixedRequired = new Set(["2-1", "3-3", "5-1", "7-3"]);
+const fourWomenTemplate = Array.from({ length: 8 }, (_, round) => {
+  const women = [0, 1, 2, 3].filter((index) => index !== round % 4);
+  const men = [0, 1, 2, 3].filter((index) => index !== (round + Math.floor(round / 4)) % 4);
+  return [...women.map((woman, index) => [woman, 4 + men[(index + Math.floor(round / 4)) % 3]]),
+    [round % 4, 4 + (round + Math.floor(round / 4)) % 4]];
+});
 function buildLineup(
   roster: Player[],
   history: Match[],
@@ -202,6 +208,8 @@ function buildLineup(
     !roster.some((player) => player.gender === "M")
   )
     return [];
+  const fourWomen = roster.filter((player) => player.gender === "W").length === 4;
+  const schedule = fourWomen ? fourWomenTemplate : template;
   const historyStats = new Map<
     string,
     { played: number; performance: number }
@@ -238,12 +246,13 @@ function buildLineup(
     let score = 0;
     const counts: Record<string, number> = {};
     let previous = new Set<string>();
-    for (let roundIndex = 0; roundIndex < template.length; roundIndex++) {
+    for (let roundIndex = 0; roundIndex < schedule.length; roundIndex++) {
       const current = new Set<string>();
       for (let courtIndex = 0; courtIndex < 3; courtIndex++) {
-        const [left, right] = template[roundIndex][courtIndex],
+        const [left, right] = schedule[roundIndex][courtIndex],
           a = ordered[left],
           b = ordered[right];
+        if (a.gender === "W" && b.gender === "W") return -Infinity;
         if (
           mixedRequired.has(`${roundIndex + 1}-${courtIndex + 1}`) &&
           a.gender === b.gender
@@ -286,7 +295,7 @@ function buildLineup(
       return;
     }
     for (let index = 0; index < roster.length; index++) {
-      if (used[index]) continue;
+      if (used[index] || (fourWomen && roster[index].gender !== (ordered.length < 4 ? "W" : "M"))) continue;
       used[index] = true;
       ordered.push(roster[index]);
       search();
@@ -296,7 +305,7 @@ function buildLineup(
   };
   search();
   if (!best.length) return [];
-  return template.map((row, index) => ({
+  return schedule.map((row, index) => ({
     round: index + 1,
     courts: row.slice(0, 3).map((pair) => pair.map((slot) => best[slot].name)),
     rest: row[3].map((slot) => best[slot].name),
@@ -1303,15 +1312,14 @@ export default function Home() {
           warnings.push(
             `Round ${row.round}: ${pair.join(" + ")} also played together in the previous round`,
           );
-        if (mixedRequired.has(`${row.round}-${courtIndex + 1}`)) {
-          const genders = pair.map(
-            (n) => selectedPlayers.find((p) => p.name === n)?.gender,
-          );
-          if (!genders[0] || genders[0] === genders[1])
-            blocking.push(
-              `Round ${row.round}, court ${courtIndex + 1}: mixed doubles required`,
-            );
-        }
+        const genders = pair.map(
+          (n) => selectedPlayers.find((p) => p.name === n)?.gender,
+        );
+        if (genders[0] === "W" && genders[1] === "W")
+          blocking.push(`Round ${row.round}, court ${courtIndex + 1}: women cannot play together`);
+        if (mixedRequired.has(`${row.round}-${courtIndex + 1}`) &&
+            (!genders[0] || genders[0] === genders[1]))
+          blocking.push(`Round ${row.round}, court ${courtIndex + 1}: mixed doubles required`);
       });
     });
     Object.entries(restCount).forEach(([n, c]) => {
@@ -1549,7 +1557,12 @@ export default function Home() {
 
   function generate() {
     if (selectedPlayers.length !== 8 || !mixedReady) return;
-    setLineup(buildLineup(selectedPlayers, matches, playerRules, rules));
+    const next = buildLineup(selectedPlayers, matches, playerRules, rules);
+    if (!next.length) {
+      flash("No valid lineup for this roster. Select at most four women.");
+      return;
+    }
+    setLineup(next);
     setEditing(false);
     setSelected(null);
     flash(
