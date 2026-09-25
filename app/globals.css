@@ -103,3 +103,8 @@ h1,h2,p { margin-top:0; } h1{margin-bottom:0;font-size:28px;letter-spacing:-.7px
   .row-actions{grid-area:actions;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:3px}
   .row-actions button{min-height:42px;padding:9px 12px;font-size:12px}
 }
+.language-switch{position:fixed;top:14px;right:18px;z-index:150;display:flex;gap:3px;padding:3px;border:1px solid #cfdad3;border-radius:10px;background:rgba(255,255,255,.96);box-shadow:0 5px 18px rgba(19,54,48,.12)}
+.language-switch button{min-width:38px;min-height:32px;padding:6px 9px;border:0;border-radius:7px;background:transparent;color:#5d716b;font-size:11px;font-weight:900;cursor:pointer}
+.language-switch button.active{background:#176b58;color:#fff}
+@media(max-width:650px){.language-switch{top:8px;right:10px}}
+@media print{.language-switch{display:none!important}}

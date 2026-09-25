@@ -1,8 +1,13 @@
 "use client";
 
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
+import { LanguageSelector, Locale, useDomLocalization } from "../i18n";
 
 export default function MigrationPage() {
+  const [locale,setLocale]=useState<Locale>("en");
+  useDomLocalization(locale);
+  useEffect(()=>{const saved=window.localStorage.getItem("picklepilot-captain-language");if(saved==="fr"||saved==="en")setLocale(saved)},[]);
+  function changeLocale(next:Locale){setLocale(next);window.localStorage.setItem("picklepilot-captain-language",next)}
   const [file, setFile] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,6 +43,7 @@ export default function MigrationPage() {
 
   return (
     <main style={{ maxWidth: 620, margin: "72px auto", padding: 24, fontFamily: "Arial, sans-serif" }}>
+      <LanguageSelector locale={locale} onChange={changeLocale}/>
       <p style={{ color: "#176b58", fontWeight: 700, letterSpacing: 1.2 }}>PICKLEPILOT CAPTAIN</p>
       <h1>Restore your Captain backup</h1>
       <p>This replaces only the empty new workspace with the data from your existing Captain account.</p>
