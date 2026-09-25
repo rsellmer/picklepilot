@@ -12,7 +12,7 @@
     {
       "binding": "DB",
       "database_name": "picklepilot-interclub-prod",
-      "database_id": "2fc10675-6d6e-4ff0-9a3c-0d6e3c92471e",
+      "database_id": "2fc10675-66de-4ff0-9a3c-0d6e3c92471e",
       "migrations_dir": "drizzle"
     }
   ]
