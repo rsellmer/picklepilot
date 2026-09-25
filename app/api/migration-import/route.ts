@@ -10,7 +10,6 @@ import {
   teamSettings,
   venues,
 } from "../../../db/schema";
-import { requireUser } from "../auth/security";
 
 type Backup = {
   format?: string;
@@ -31,9 +30,6 @@ const records = (value: unknown) => Array.isArray(value) ? value as Array<Record
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireUser(request);
-    if (auth.response) return auth.response;
-
     const backup = await request.json() as Backup;
     if (backup.format !== "picklepilot-captain-backup" || backup.version !== 1 || !backup.data?.team) {
       return Response.json({ error: "This is not a valid PicklePilot Captain backup." }, { status: 400 });
