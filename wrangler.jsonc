@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "picklepilot-captain",
+  "main": "dist/server/index.js",
+  "compatibility_date": "2026-09-25",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "dist/client",
+    "binding": "ASSETS"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "picklepilot-captain-prod",
+      "database_id": "b0ce7f79-b26f-4e4d-a5b7-af45952e63fe",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
