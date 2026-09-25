@@ -27,8 +27,15 @@ const template = [
   [[3,6],[1,2],[4,7],[0,5]], [[0,3],[2,4],[5,7],[1,6]], [[0,1],[5,6],[3,4],[2,7]], [[0,5],[1,6],[2,7],[3,4]],
 ];
 const mixedRequired = new Set(["2-1","3-3","5-1","7-3"]);
+const fourWomenTemplate = Array.from({length:8},(_,round)=>{
+  const women=[0,1,2,3].filter(index=>index!==round%4);
+  const men=[0,1,2,3].filter(index=>index!==(round+Math.floor(round/4))%4);
+  return [...women.map((woman,index)=>[woman,4+men[(index+Math.floor(round/4))%3]]),[round%4,4+(round+Math.floor(round/4))%4]];
+});
 function buildLineup(roster:Player[],history:Match[],playerRules:PlayerRule[],rules:RuleSettings):Round[] {
   if(roster.length!==8||!roster.some(player=>player.gender==="W")||!roster.some(player=>player.gender==="M"))return [];
+  const fourWomen=roster.filter(player=>player.gender==="W").length===4;
+  const schedule=fourWomen?fourWomenTemplate:template;
   const historyStats=new Map<string,{played:number;performance:number}>();
   history.forEach(match=>match.lineup?.forEach(round=>round.courts.forEach((pair,courtIndex)=>{
     const result=match.results?.[`${round.round}-${courtIndex+1}`];if(!result)return;
@@ -38,10 +45,11 @@ function buildLineup(roster:Player[],history:Match[],playerRules:PlayerRule[],ru
   const pairScore=(a:string,b:string)=>{const stat=historyStats.get([a,b].sort().join("|"));return stat?Math.max(0,Math.min(100,50+stat.performance/(stat.played+4)*100)):50};
   const scoreOrder=(ordered:Player[])=>{
     let score=0;const counts:Record<string,number>={};let previous=new Set<string>();
-    for(let roundIndex=0;roundIndex<template.length;roundIndex++){
+    for(let roundIndex=0;roundIndex<schedule.length;roundIndex++){
       const current=new Set<string>();
       for(let courtIndex=0;courtIndex<3;courtIndex++){
-        const [left,right]=template[roundIndex][courtIndex],a=ordered[left],b=ordered[right];
+        const [left,right]=schedule[roundIndex][courtIndex],a=ordered[left],b=ordered[right];
+        if(a.gender==="W"&&b.gender==="W")return -Infinity;
         if(mixedRequired.has(`${roundIndex+1}-${courtIndex+1}`)&&a.gender===b.gender)return -Infinity;
         const key=[a.name,b.name].sort().join("|");current.add(key);counts[key]=(counts[key]??0)+1;score+=pairScore(a.name,b.name);
         if(rules.avoidConsecutivePartners&&previous.has(key))score-=100;
@@ -54,9 +62,9 @@ function buildLineup(roster:Player[],history:Match[],playerRules:PlayerRule[],ru
   };
   let best:Player[]=[];let bestScore=-Infinity;
   const used=Array(8).fill(false),ordered:Player[]=[];
-  const search=()=>{if(ordered.length===8){const score=scoreOrder(ordered);if(score>bestScore){bestScore=score;best=[...ordered]}return}for(let index=0;index<roster.length;index++){if(used[index])continue;used[index]=true;ordered.push(roster[index]);search();ordered.pop();used[index]=false}};
+  const search=()=>{if(ordered.length===8){const score=scoreOrder(ordered);if(score>bestScore){bestScore=score;best=[...ordered]}return}for(let index=0;index<roster.length;index++){if(used[index]||(fourWomen&&roster[index].gender!==(ordered.length<4?"W":"M")))continue;used[index]=true;ordered.push(roster[index]);search();ordered.pop();used[index]=false}};
   search();if(!best.length)return [];
-  return template.map((row,index)=>({round:index+1,courts:row.slice(0,3).map(pair=>pair.map(slot=>best[slot].name)),rest:row[3].map(slot=>best[slot].name)}));
+  return schedule.map((row,index)=>({round:index+1,courts:row.slice(0,3).map(pair=>pair.map(slot=>best[slot].name)),rest:row[3].map(slot=>best[slot].name)}));
 }
 
 function Sidebar({ page, go, captainName }: { page: Page; go: (page: Page) => void; captainName:string }) {
@@ -230,7 +238,9 @@ export default function Home() {
       row.courts.forEach((pair,courtIndex)=>{
         const key=[...pair].sort().join("|");partners[key]=(partners[key]||0)+1;
         if(rules.avoidConsecutivePartners&&rowIndex&&lineup[rowIndex-1].courts.some(previous=>[...previous].sort().join("|")===key))warnings.push(`Round ${row.round}: ${pair.join(" + ")} also played together in the previous round`);
-        if(mixedRequired.has(`${row.round}-${courtIndex+1}`)){const genders=pair.map(n=>selectedPlayers.find(p=>p.name===n)?.gender);if(!genders[0]||genders[0]===genders[1])blocking.push(`Round ${row.round}, court ${courtIndex+1}: mixed doubles required`)}
+        const genders=pair.map(n=>selectedPlayers.find(p=>p.name===n)?.gender);
+        if(genders[0]==="W"&&genders[1]==="W")blocking.push(`Round ${row.round}, court ${courtIndex+1}: women cannot play together`);
+        if(mixedRequired.has(`${row.round}-${courtIndex+1}`)&&(!genders[0]||genders[0]===genders[1]))blocking.push(`Round ${row.round}, court ${courtIndex+1}: mixed doubles required`);
       });
     });
     Object.entries(restCount).forEach(([n,c])=>{if(c!==2)blocking.push(`${n} rests ${c} times`)});
@@ -279,7 +289,7 @@ export default function Home() {
   async function addPlayerRule(){if(!ruleA||!ruleB||ruleA===ruleB){flash("Select two different players.");return}const response=await fetch("/api/player-rules",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({playerAId:ruleA,playerBId:ruleB,ruleType,minimumGames:ruleMinimum})});if(!response.ok){flash("The player rule could not be saved.");return}const {rule}=await response.json() as {rule:PlayerRule};setPlayerRules(current=>[...current,rule]);setRuleA("");setRuleB("");flash("Player rule saved.")}
   async function removePlayerRule(id:number){const response=await fetch(`/api/player-rules?id=${id}`,{method:"DELETE"});if(response.ok){setPlayerRules(current=>current.filter(rule=>rule.id!==id));flash("Player rule removed.")}}
 
-  function generate(){if(selectedPlayers.length!==8||!mixedReady)return;setLineup(buildLineup(selectedPlayers,matches,playerRules,rules));setEditing(false);setSelected(null);flash("Best available lineup generated from pair rankings, game volume and active preferences.")}
+  function generate(){if(selectedPlayers.length!==8||!mixedReady)return;const next=buildLineup(selectedPlayers,matches,playerRules,rules);if(!next.length){flash("No valid lineup for this roster. Select at most four women.");return}setLineup(next);setEditing(false);setSelected(null);flash("Best available lineup generated from pair rankings, game volume and active preferences.")}
   function sortReport(key:ReportSort){if(reportSort===key)setReportSortDirection(direction=>direction==="desc"?"asc":"desc");else{setReportSort(key);setReportSortDirection("desc")}}
   function swapPlayer(round:number,index:number){if(!editing)return;if(!selected||selected.round!==round){setSelected({round,index});return}const next=structuredClone(lineup),values=[...next[round].courts.flat(),...next[round].rest];[values[selected.index],values[index]]=[values[index],values[selected.index]];next[round].courts=[[values[0],values[1]],[values[2],values[3]],[values[4],values[5]]];next[round].rest=[values[6],values[7]];setLineup(next);setSelected(null)}
   function openForm(player?:Player){setEditingPlayer(player||null);setPlayerName(player?.name||"");setPlayerGender(player?.gender||"W");setShowForm(true)}

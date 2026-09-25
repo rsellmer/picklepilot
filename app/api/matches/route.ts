@@ -37,6 +37,26 @@ function valid(input: MatchInput) {
   return Boolean(input.opponent?.trim() && input.matchDate && input.matchTime && input.location?.trim() && input.seasonId);
 }
 
+async function lineupError(input: MatchInput, teamId: number): Promise<string | null> {
+  if (input.lineup == null) return null;
+  if (!Array.isArray(input.lineup) || !Array.isArray(input.playerIds)) return "Invalid lineup";
+  const teamPlayers = await getDb().select().from(players).where(eq(players.teamId, teamId));
+  const selected = teamPlayers.filter(player => input.playerIds!.includes(player.id));
+  const genders = new Map(selected.map(player => [player.name, player.gender]));
+  const mixed = new Set(["2-1", "3-3", "5-1", "7-3"]);
+  for (const round of input.lineup) {
+    if (!round || typeof round.round !== "number" || !Array.isArray(round.courts) || round.courts.length !== 3) return "Invalid lineup";
+    for (let court = 0; court < 3; court++) {
+      const pair = round.courts[court];
+      if (!Array.isArray(pair) || pair.length !== 2 || !pair.every((name: unknown) => typeof name === "string" && genders.has(name))) return "Invalid lineup players";
+      const [a, b] = pair.map((name: string) => genders.get(name));
+      if (a === "W" && b === "W") return `Round ${round.round}, court ${court + 1}: women cannot play together`;
+      if (mixed.has(`${round.round}-${court + 1}`) && a === b) return `Round ${round.round}, court ${court + 1}: mixed doubles required`;
+    }
+  }
+  return null;
+}
+
 function parsed(row: typeof matches.$inferSelect) {
   return { ...row, playerIds: JSON.parse(row.playerIds), lineup: row.lineup ? JSON.parse(row.lineup) : null, results: row.results ? JSON.parse(row.results) : {} };
 }
@@ -129,6 +149,8 @@ export async function POST(request: Request) {
     const auth=await requireUser(request);if(auth.response)return auth.response;
     const input = await request.json() as MatchInput;
     if (!valid(input)) return Response.json({ error: "Create a season before creating a match" }, { status: 400 });
+    const violation = await lineupError(input, auth.user!.teamId);
+    if (violation) return Response.json({ error: violation }, { status: 400 });
     const db=getDb();
     const [season]=await db.select({id:seasons.id}).from(seasons).where(and(eq(seasons.id,input.seasonId!),eq(seasons.teamId,auth.user!.teamId),eq(seasons.status,"Active")));
     if(!season)return Response.json({error:"Select an active season before creating a match"},{status:400});
@@ -144,6 +166,8 @@ export async function PUT(request: Request) {
     const auth=await requireUser(request);if(auth.response)return auth.response;
     const input = await request.json() as MatchInput;
     if (!input.id || !valid(input)) return Response.json({ error: "Valid match is required" }, { status: 400 });
+    const violation = await lineupError(input, auth.user!.teamId);
+    if (violation) return Response.json({ error: violation }, { status: 400 });
     const [match] = await getDb().update(matches).set(values(input)).where(and(eq(matches.id, input.id),eq(matches.teamId,auth.user!.teamId))).returning();
     return Response.json({ match: parsed(match) });
   } catch (error) {
