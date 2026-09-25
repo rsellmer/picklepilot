@@ -41,8 +41,8 @@ export async function POST(request: Request) {
 
     const db = getDb();
     const destinationUsers = await db.select({ id: appUsers.id }).from(appUsers);
-    if (destinationUsers.length !== 1) {
-      return Response.json({ error: "Import is available only before this new Captain workspace is used." }, { status: 409 });
+    if (destinationUsers.length > 1) {
+      return Response.json({ error: "Import is available only while this new Captain workspace is still empty." }, { status: 409 });
     }
 
     const users = records(backup.data.users);
