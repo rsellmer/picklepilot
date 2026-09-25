@@ -64,12 +64,12 @@ export async function POST(request: Request) {
     const venueRows = records(backup.data.venues);
     const opponentRows = records(backup.data.opponents);
     const ruleRows = records(backup.data.playerRules);
-    if (playerRows.length) await db.insert(players).values(playerRows as Array<typeof players.$inferInsert>);
-    if (matchRows.length) await db.insert(matches).values(matchRows as Array<typeof matches.$inferInsert>);
-    if (seasonRows.length) await db.insert(seasons).values(seasonRows as Array<typeof seasons.$inferInsert>);
-    if (venueRows.length) await db.insert(venues).values(venueRows as Array<typeof venues.$inferInsert>);
-    if (opponentRows.length) await db.insert(opponents).values(opponentRows as Array<typeof opponents.$inferInsert>);
-    if (ruleRows.length) await db.insert(playerRules).values(ruleRows as Array<typeof playerRules.$inferInsert>);
+    for (const row of playerRows) await db.insert(players).values(row as typeof players.$inferInsert);
+    for (const row of matchRows) await db.insert(matches).values(row as typeof matches.$inferInsert);
+    for (const row of seasonRows) await db.insert(seasons).values(row as typeof seasons.$inferInsert);
+    for (const row of venueRows) await db.insert(venues).values(row as typeof venues.$inferInsert);
+    for (const row of opponentRows) await db.insert(opponents).values(row as typeof opponents.$inferInsert);
+    for (const row of ruleRows) await db.insert(playerRules).values(row as typeof playerRules.$inferInsert);
 
     return Response.json({ ok: true });
   } catch (error) {
