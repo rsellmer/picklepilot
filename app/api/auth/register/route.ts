@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { appSessions, appUsers, teamSettings } from "../../../../db/schema";
 import { hashPassword, hashToken, randomHex, sessionCookie } from "../security";
-
 function slugify(value:string){return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")}
 async function uniqueSlug(value:string){const db=getDb(),base=slugify(value)||"team";let slug=base,index=2;while((await db.select({id:teamSettings.id}).from(teamSettings).where(eq(teamSettings.publicSlug,slug)).limit(1)).length){slug=`${base}-${index++}`}return slug}
+
 
 export async function POST(request:Request){
   try{
