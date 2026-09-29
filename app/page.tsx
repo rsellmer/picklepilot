@@ -70,7 +70,7 @@ function buildLineup(roster:Player[],history:Match[],playerRules:PlayerRule[],ru
 
 function Sidebar({ page, go, captainName }: { page: Page; go: (page: Page) => void; captainName:string }) {
   const initials=captainName.split(/\s+/).filter(Boolean).map(part=>part[0]).join("").slice(0,2).toUpperCase()||"C";
-  return <aside className="sidebar"><div className="brand"><img src="/brand/picklepilot-mark.png" alt="" className="brand-logo"/><span>PicklePilot</span></div><nav aria-label="Main navigation">
+  return <aside className="sidebar"><div className="brand"><img src="/brand/picklepilot-mark.svg" alt="" className="brand-logo"/><span>PicklePilot</span></div><nav aria-label="Main navigation">
     <button className={`nav-item ${page==="dashboard"?"active":""}`} onClick={() => go("dashboard")}>⌁ <span>Dashboard</span></button>
     <button className={`nav-item ${page==="matches"?"active":""}`} onClick={() => go("matches")}>◇ <span>Matches</span></button>
     <button className={`nav-item ${page==="players"?"active":""}`} onClick={() => go("players")}>♙ <span>Teams & players</span></button>
