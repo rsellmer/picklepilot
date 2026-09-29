@@ -391,6 +391,7 @@ const french: Record<string, string> = {
   "Block two women playing together": "Bloquer deux femmes jouant ensemble",
   "Blocked for this team": "Bloqué pour cette équipe",
   "Allowed for this team": "Autorisé pour cette équipe",
+  "Configure lineup preferences and team rules.": "Configurez les préférences d’alignement et les règles d’équipe.",
   "Review your lineup": "Vérifier l’alignement",
   "Swap players if needed, then save. Printing is optional.": "Échangez des joueurs au besoin, puis enregistrez. L’impression est facultative.",
   "Print lineup": "Imprimer l’alignement",
