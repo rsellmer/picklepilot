@@ -66,8 +66,8 @@ export const teamSettings = sqliteTable("team_settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   teamName: text("team_name").notNull().default("Chambly A"),
   captainName: text("captain_name").notNull().default("Captain"),
-  category: text("category", { enum: ["Performance", "Development"] }).notNull().default("Performance"),
   publicSlug: text("public_slug").notNull().unique(),
+  category: text("category", { enum: ["Performance", "Development"] }).notNull().default("Performance"),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
