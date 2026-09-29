@@ -1,8 +1,8 @@
 import { getDb } from "../../../../db";
 import { appSessions, appUsers, teamSettings } from "../../../../db/schema";
 import { hashPassword, hashToken, randomHex, sessionCookie } from "../security";
-
 function slugify(value:string){return value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")}
+
 
 export async function POST(request:Request){
   try{
