@@ -68,6 +68,7 @@ export const teamSettings = sqliteTable("team_settings", {
   captainName: text("captain_name").notNull().default("Captain"),
   publicSlug: text("public_slug").notNull().unique(),
   category: text("category", { enum: ["Performance", "Development"] }).notNull().default("Performance"),
+  blockWomenPairs: integer("block_women_pairs", { mode: "boolean" }).notNull().default(true),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
