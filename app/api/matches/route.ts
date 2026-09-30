@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { matches, players, seasons } from "../../../db/schema";
+import { matches, players, seasons, teamSettings } from "../../../db/schema";
 import { requireUser } from "../auth/security";
 
 type MatchInput = {
@@ -40,7 +40,11 @@ function valid(input: MatchInput) {
 async function lineupError(input: MatchInput, teamId: number): Promise<string | null> {
   if (input.lineup == null) return null;
   if (!Array.isArray(input.lineup) || !Array.isArray(input.playerIds)) return "Invalid lineup";
-  const teamPlayers = await getDb().select().from(players).where(eq(players.teamId, teamId));
+  const db = getDb();
+  const [settings] = await db.select({ blockWomenPairs: teamSettings.blockWomenPairs }).from(teamSettings).where(eq(teamSettings.id, teamId));
+  // Teams created before this setting existed keep the original, protective default.
+  const blockWomenPairs = settings?.blockWomenPairs ?? true;
+  const teamPlayers = await db.select().from(players).where(eq(players.teamId, teamId));
   const selected = teamPlayers.filter(player => input.playerIds!.includes(player.id));
   const genders = new Map(selected.map(player => [player.name, player.gender]));
   const mixed = new Set(["2-1", "3-3", "5-1", "7-3"]);
@@ -50,7 +54,7 @@ async function lineupError(input: MatchInput, teamId: number): Promise<string | 
       const pair = round.courts[court];
       if (!Array.isArray(pair) || pair.length !== 2 || !pair.every((name: unknown) => typeof name === "string" && genders.has(name))) return "Invalid lineup players";
       const [a, b] = pair.map((name: string) => genders.get(name));
-      if (a === "W" && b === "W") return `Round ${round.round}, court ${court + 1}: women cannot play together`;
+      if (blockWomenPairs && a === "W" && b === "W") return `Round ${round.round}, court ${court + 1}: women cannot play together`;
       if (mixed.has(`${round.round}-${court + 1}`) && a === b) return `Round ${round.round}, court ${court + 1}: mixed doubles required`;
     }
   }
