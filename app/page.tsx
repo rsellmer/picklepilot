@@ -349,12 +349,17 @@ export default function Home() {
   async function saveMatch(e:FormEvent){
     e.preventDefault();
     try {
+      const rosterChanged=Boolean(editingMatch)&&(
+        editingMatch!.playerIds.length!==matchPlayers.length||
+        editingMatch!.playerIds.some(id=>!matchPlayers.includes(id))
+      );
       const response=await fetch("/api/matches",{method:editingMatch?"PUT":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-        ...(editingMatch??{}),opponent:matchOpponent,matchDate,matchTime,location:matchLocation,opponentStrength:matchStrength,homeAway:matchHomeAway,court1:matchCourts[0],court2:matchCourts[1],court3:matchCourts[2],warmupMinutes:editingMatch?.warmupMinutes??10,roundMinutes:editingMatch?.roundMinutes??12,breakMinutes:editingMatch?.breakMinutes??2,playerIds:matchPlayers,seasonId:editingMatch?.seasonId??activeSeason?.id,
+        ...(editingMatch??{}),opponent:matchOpponent,matchDate,matchTime,location:matchLocation,opponentStrength:matchStrength,homeAway:matchHomeAway,court1:matchCourts[0],court2:matchCourts[1],court3:matchCourts[2],warmupMinutes:editingMatch?.warmupMinutes??10,roundMinutes:editingMatch?.roundMinutes??12,breakMinutes:editingMatch?.breakMinutes??2,playerIds:matchPlayers,lineup:rosterChanged?null:editingMatch?.lineup,results:rosterChanged?{}:editingMatch?.results,status:rosterChanged?"Upcoming":editingMatch?.status,seasonId:editingMatch?.seasonId??activeSeason?.id,
       })});
-      if(!response.ok)throw new Error("Save failed");
-      const {match}=await response.json() as {match:Match}; setMatches(current=>editingMatch?current.map(item=>item.id===match.id?match:item):[...current,match]);setActiveMatch(current=>current?.id===match.id?match:current);setEditingMatch(null);setShowMatchForm(false);flash(editingMatch?"Match updated. Lineup and results were preserved.":"Match created and saved.");
-    } catch { flash("The match could not be saved. Please try again."); }
+      const payload=await response.json().catch(()=>({})) as {match?:Match;error?:string};
+      if(!response.ok||!payload.match)throw new Error(payload.error||"Save failed");
+      const match=payload.match; setMatches(current=>editingMatch?current.map(item=>item.id===match.id?match:item):[...current,match]);setActiveMatch(current=>current?.id===match.id?match:current);setEditingMatch(null);setShowMatchForm(false);flash(editingMatch?(rosterChanged?"Players updated. Generate a new lineup for this match.":"Match updated. Lineup and results were preserved."):"Match created and saved.");
+    } catch (error) { flash(error instanceof Error&&error.message!=="Save failed"?error.message:"The match could not be saved. Please try again."); }
   }
   function buildMatch(match:Match){
     setActiveMatch(match); setAvailable(match.playerIds);
