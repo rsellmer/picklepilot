@@ -368,9 +368,10 @@ export default function Home() {
     if(!activeMatch){flash("Open the lineup from a saved match before saving.");setPage("matches");return}
     try {
       const response=await fetch("/api/matches",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({...activeMatch,playerIds:available,lineup})});
-      if(!response.ok)throw new Error("Save failed");
-      const {match}=await response.json() as {match:Match}; setActiveMatch(match); setMatches(current=>current.map(item=>item.id===match.id?match:item)); setLastSaved(new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})); flash("Lineup saved to this match.");
-    } catch { flash("The lineup could not be saved. Please try again."); }
+      const payload=await response.json().catch(()=>({})) as {match?:Match;error?:string};
+      if(!response.ok||!payload.match)throw new Error(payload.error||"Save failed");
+      const match=payload.match; setActiveMatch(match); setMatches(current=>current.map(item=>item.id===match.id?match:item)); setLastSaved(new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})); flash("Lineup saved to this match.");
+    } catch (error) { flash(error instanceof Error&&error.message!=="Save failed"?error.message:"The lineup could not be saved. Please try again."); }
   }
   async function openResults(match:Match){
     if(!match.lineup?.length){flash("Save the lineup before entering results.");return}
