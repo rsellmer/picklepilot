@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const players = sqliteTable("players", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -99,3 +99,22 @@ export const appSessions = sqliteTable("app_sessions", {
   expiresAt: text("expires_at").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+
+export const availabilityPolls = sqliteTable("availability_polls", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  matchId: integer("match_id").notNull().unique(),
+  teamId: integer("team_id").notNull(),
+  token: text("token").notNull().unique(),
+  status: text("status", { enum: ["Open", "Closed"] }).notNull().default("Open"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const availabilityResponses = sqliteTable("availability_responses", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  pollId: integer("poll_id").notNull(),
+  playerId: integer("player_id").notNull(),
+  response: text("response", { enum: ["Available", "Unavailable", "Maybe"] }).notNull(),
+  note: text("note").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => ({ pollPlayerUnique: uniqueIndex("availability_poll_player_unique").on(table.pollId, table.playerId) }));
