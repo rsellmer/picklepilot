@@ -41,7 +41,7 @@
 @media(max-width:650px){.print-page{grid-column:1;padding:12px}.court-number-fields{grid-template-columns:1fr 1fr 1fr}}
 
 /* Keep this block after all responsive rules so mobile styles cannot alter paper output. */
-@page { size:11in 8.5in; margin:0.15in; }
+@page { size: landscape; margin:0.15in; }
 @media print {
   html,body { width:10.7in!important; min-width:10.7in!important; height:8.2in!important; margin:0!important; padding:0!important; overflow:hidden!important; background:#fff!important; }
   .sidebar,.mobile-nav,.print-controls,.logout-button { display:none!important; }
