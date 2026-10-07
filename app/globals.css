@@ -119,3 +119,4 @@ h1,h2,p { margin-top:0; } h1{margin-bottom:0;font-size:28px;letter-spacing:-.7px
 @media print{.language-switch{display:none!important}}
 .results-header-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px}
 @media(max-width:650px){.results-header-actions{display:grid;grid-template-columns:1fr 1fr}.results-header-actions button{min-height:42px}}
+@media(max-width:650px){.toast{z-index:90;left:14px;right:14px;bottom:150px;padding:14px 16px;text-align:center;font-size:12px}}
