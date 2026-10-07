@@ -117,3 +117,5 @@ h1,h2,p { margin-top:0; } h1{margin-bottom:0;font-size:28px;letter-spacing:-.7px
 @media(max-width:650px){.language-switch{top:8px;right:10px}}
 @media(max-width:650px){.public-link-card{align-items:stretch;flex-direction:column;padding:18px;margin-bottom:14px}.public-link-card a{text-align:center;white-space:normal}.public-calendar{padding:20px 12px}.public-card{padding:24px 18px;border-radius:16px}.public-card h1{font-size:27px}.public-match{grid-template-columns:1fr;gap:10px;padding:16px}.public-match time strong{display:inline;margin:0 0 0 8px;font-size:16px}}
 @media print{.language-switch{display:none!important}}
+.results-header-actions{display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px}
+@media(max-width:650px){.results-header-actions{display:grid;grid-template-columns:1fr 1fr}.results-header-actions button{min-height:42px}}
