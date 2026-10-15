@@ -61,7 +61,8 @@ const french: Record<string, string> = {
   "Selected season": "Saison sélectionnée",
   "Current season": "Saison actuelle",
   "Complete team history": "Historique complet de l’équipe",
-"Results update automatically whenever a match is saved.": "Les résultats se mettent à jour automatiquement après l’enregistrement d’un match.",
+  "TEAM RESULTS": "RÉSULTATS DE L’ÉQUIPE",
+  "Results update automatically whenever a match is saved.": "Les résultats se mettent à jour automatiquement après l’enregistrement d’un match.",
   "View matches →": "Voir les matchs →",
   "Weekly report": "Rapport hebdomadaire",
   "Team statistics": "Statistiques de l’équipe",
@@ -83,155 +84,9 @@ const french: Record<string, string> = {
   "By player": "Par joueur",
   "Minimum games": "Minimum de parties",
   "Real ranking": "Classement réel",
-Warning: truncated output (original token count: 4321)
-Total output lines: 276
-
   "Adjusted ranking": "Classement ajusté",
   "ADJUSTED POINTS": "POINTS AJUSTÉS",
   "Adjusted points start at 50 and become more reliable as games are played.": "Les points ajustés commencent à 50 et deviennent plus fiables à mesure que les parties sont jouées.",
-  "No results for this filter": "Aucun résultat pour ce filtre",
-  "Adjusted ranking": "Classement ajusté",
-  "By pair": "Par duo",
-  "By player": "Par joueur",
-  "RECORDED GAMES": "PARTIES ENREGISTRÉES",
-  "ACTIVE PAIRS": "DUOS ACTIFS",
-  "PLAYED": "JOUÉS",
-  "WINS": "VICTOIRES",
-  "LOSSES": "DÉFAITES",
-  "WIN %": "% VICTOIRES",
-  "SCORE": "INDICE",
-  "wins": "victoires",
-  "losses": "défaites",
-  "with saved results": "avec résultats enregistrés",
-  "No specific player preferences yet.": "Aucune préférence de joueurs pour l’instant.",
-  "PLAYER RELATIONSHIPS": "RELATIONS ENTRE JOUEURS",
-  "Player preferences": "Préférences des joueurs",
-  "Lineup preferences": "Préférences d’alignement",
-  "Should play together": "Devraient jouer ensemble",
-  "Games together": "Parties ensemble",
-  "Add preference": "Ajouter une préférence",
-  "Required rules": "Règles obligatoires",
-  "Required mixed courts": "Terrains mixtes obligatoires",
-  "Rounds 2, 3, 5 and 7.": "Manches 2, 3, 5 et 7.",
-  "Six play, two rest": "Six jouent, deux se reposent",
-  "One appearance per round": "Une présence par manche",
-  "No player can be on two courts.": "Aucun joueur ne peut être sur deux terrains.",
-  "These protect the competition format and cannot be disabled.": "Ces règles protègent le format de la compétition et ne peuvent pas être désactivées.",
-  "ALWAYS ON": "TOUJOURS ACTIVES",
-  "CUSTOMIZABLE": "PERSONNALISABLE",
-  "Applied in every round.": "Appliquées à chaque manche.",
-  "Set how PicklePilot should build and validate every lineup.": "Choisissez comment PicklePilot crée et valide chaque alignement.",
-  "Choose preferred pairings. These create warnings and never block saving.": "Choisissez les duos préférés. Ils génèrent des avertissements sans bloquer l’enregistrement.",
-  "Preferences generate warnings but never block saving.": "Les préférences génèrent des avertissements sans bloquer l’enregistrement.",
-  "A complete roster is required.": "Un effectif complet est requis.",
-  "0 · Avoid pairing": "0 · Éviter le duo",
-  "50 · Neutral": "50 · Neutre",
-  "100 · Strong pairing": "100 · Duo fort",
-  "1 game": "1 partie",
-  "2 games": "2 parties",
-  "3 games": "3 parties",
-  "ASSISTED PHOTO IMPORT · SIMULATION": "IMPORTATION ASSISTÉE DE PHOTO · SIMULATION",
-  "Choose or take a photo": "Choisir ou prendre une photo",
-  "Change photo": "Changer la photo",
-  "JPG, PNG or phone camera": "JPG, PNG ou appareil photo",
-  "Pick a photo, review every suggestion, then apply it to this match.": "Choisissez une photo, vérifiez chaque proposition, puis appliquez-la au match.",
-  "Read V / D from the score sheet": "Lire V / D sur la feuille de pointage",
-  "Apply confirmed results →": "Appliquer les résultats confirmés →",
-  "Mark one result for each pair. You can save and finish later.": "Marquez un résultat par duo. Vous pouvez enregistrer et terminer plus tard.",
-  "Results update automatically whenever a match is saved.": "Les résultats se mettent à jour après chaque enregistrement de match.",
-  "Restore your Captain backup": "Restaurer votre sauvegarde Captain",
-  "This replaces only the empty new workspace with the data from your existing Captain account.": "Cette opération remplace uniquement le nouvel espace vide par les données de votre compte Captain existant.",
-  "Choose the Captain backup file first.": "Choisissez d’abord le fichier de sauvegarde Captain.",
-  "Restore backup": "Restaurer la sauvegarde",
-  "Restoring…": "Restauration…",
-  "The backup could not be restored.": "La sauvegarde n’a pas pu être restaurée.",
-  "Restore complete. Sign in again with your existing Captain account.": "Restauration termin…2321 tokens truncated…d+) : deux femmes ne peuvent pas jouer ensemble$/, "Round $1, court $2: women cannot play together")
-      .replace(/^Manche (\d+), terrain (\d+) : duo mixte obligatoire$/, "Round $1, court $2: mixed doubles required")
-      .replace(/^(.+) est maintenant la saison active\.$/, "$1 is now the active season.");
-    if (translated === trimmed) translated = trimmed
-      .replace(/^Manche (\d+) : (.+) apparaît plus d’une fois$/, "Round $1: $2 appears more than once")
-      .replace(/^Manche (\d+) : (.+) ne fait pas partie de l’effectif$/, "Round $1: $2 is not in this roster")
-      .replace(/^Manche (\d+) : repos consécutifs$/, "Round $1: back-to-back rest")
-      .replace(/^Manche (\d+) : (.+) ont aussi joué ensemble à la manche précédente$/, "Round $1: $2 also played together in the previous round")
-      .replace(/^(.+) est au repos (\d+) fois$/, "$1 rests $2 times")
-      .replace(/^(.+) jouent ensemble (\d+) fois$/, "$1 play together $2 times")
-      .replace(/^(.+) et (.+) ne devraient pas jouer ensemble$/, "$1 and $2 should not play together")
-      .replace(/^(.+) et (.+) devraient jouer ensemble au moins (\d+) fois$/, "$1 and $2 should play together at least $3 times")
-      .replace(/^(.+) est maintenant actif et enregistré\.$/, "$1 is now active and saved.")
-      .replace(/^(.+) est maintenant inactif et enregistré\.$/, "$1 is now inactive and saved.")
-      .replace(/^(.+) ajouté\.$/, "$1 added.")
-      .replace(/^(.+) supprimé\.$/, "$1 removed.")
-      .replace(/^(.+) modifié\.$/, "$1 updated.");
-  }
-  if (!translated || translated === trimmed) return value;
-  return value.replace(trimmed, translated);
-}
-
-function localize(root: ParentNode, locale: Locale) {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  let node: Node | null;
-  while ((node = walker.nextNode())) {
-    const parent = node.parentElement;
-    if (!parent || parent.closest("script, style, [data-no-i18n]")) continue;
-    const next = translateValue(node.nodeValue ?? "", locale);
-    if (next !== node.nodeValue) node.nodeValue = next;
-  }
-  root.querySelectorAll<HTMLElement>("[placeholder], [title], [aria-label]").forEach((element) => {
-    for (const attribute of ["placeholder", "title", "aria-label"]) {
-      const value = element.getAttribute(attribute);
-      if (!value) continue;
-      const next = translateValue(value, locale);
-      if (next !== value) element.setAttribute(attribute, next);
-    }
-  });
-  document.documentElement.lang = locale;
-}
-
-export function useDomLocalization(locale: Locale) {
-  useEffect(() => {
-    let applying = false;
-    const apply = () => {
-      if (applying) return;
-      applying = true;
-      localize(document.body, locale);
-      applying = false;
-    };
-    apply();
-    const observer = new MutationObserver(() => queueMicrotask(apply));
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => observer.disconnect();
-  }, [locale]);
-}
-
-export function LanguageSelector({
-  locale,
-  onChange,
-}: {
-  locale: Locale;
-  onChange: (locale: Locale) => void;
-}) {
-  return (
-    <div className="language-switch" data-no-i18n aria-label="Language / Langue">
-      <button className={locale === "fr" ? "active" : ""} onClick={() => onChange("fr")} type="button" aria-pressed={locale === "fr"}>
-        FR
-      </button>
-      <button className={locale === "en" ? "active" : ""} onClick={() => onChange("en")} type="button" aria-pressed={locale === "en"}>
-        EN
-      </button>
-    </div>
-  );
-}
-
-export function localizeDivision(name: string, locale: Locale) {
-  if (locale === "fr" && name === "Development") return "Développement";
-  if (locale === "fr" && name === "Senior") return "Sénior";
-  if (locale === "en" && name === "Développement") return "Development";
-  if (locale === "en" && name === "Sénior") return "Senior";
-  return name;
-}
-
-export function localeCode(locale: Locale) {
-  return locale === "fr" ? "fr-CA" : "en-CA";
   "No results for this filter": "Aucun résultat pour ce filtre",
   "Try a lower minimum number of games.": "Essayez un nombre minimum de parties moins élevé.",
   "No results yet": "Aucun résultat pour le moment",
@@ -630,6 +485,9 @@ export function localeCode(locale: Locale) {
   "Court numbers": "Numéros des terrains",
   "Changing selected players may require adjusting the saved lineup.": "Changer les joueurs sélectionnés peut nécessiter un ajustement de l’alignement enregistré.",
   "Analysis period": "Période d’analyse",
+  "Real ranking": "Classement réel",
+  "By pair": "Par duo",
+  "By player": "Par joueur",
   "RECORDED GAMES": "PARTIES ENREGISTRÉES",
   "ACTIVE PAIRS": "DUOS ACTIFS",
   "PLAYED": "JOUÉS",
