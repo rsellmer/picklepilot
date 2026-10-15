@@ -315,8 +315,9 @@ export default function Home() {
   function generate(){if(selectedPlayers.length!==8||!mixedReady)return;const next=buildLineup(selectedPlayers,matches,playerRules,rules);if(!next.length){flash("No valid lineup for this roster. Select at most four women.");return}setLineup(next);setEditing(false);setSelected(null);flash("Best available lineup generated from pair rankings, game volume and active preferences.")}
   function sortReport(key:ReportSort){if(reportSort===key)setReportSortDirection(direction=>direction==="desc"?"asc":"desc");else{setReportSort(key);setReportSortDirection("desc")}}
   function reportExportData(){
-    if(reportTab==="weekly"&&weeklyMatch){const values=Object.values(weeklyMatch.results??{});const wins=values.filter(value=>value==="W").length,losses=values.filter(value=>value==="L").length;return {title:`${teamName} · Weekly report`,subtitle:`${weeklyMatch.matchDate} · ${teamName} vs ${weeklyMatch.opponent}`,headers:["Round","Court","Pair","Result"],rows:(weeklyMatch.lineup??[]).flatMap(round=>round.courts.map((pair,courtIndex)=>[String(round.round),`Court ${[weeklyMatch.court1,weeklyMatch.court2,weeklyMatch.court3][courtIndex]}`,pair.join(" + "),weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="W"?"Win":weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="L"?"Loss":"—"])),summary:`${wins} wins · ${losses} losses · ${values.length} recorded games`};}
-    const label=reportEntity==="pairs"?"Pairs":"Players";return {title:`${teamName} · Team statistics`,subtitle:`${reportScope==="current"?activeSeason?.name??"Current season":"All seasons"} · ${label} · minimum ${reportMinimumGames} game${reportMinimumGames===1?"":"s"}`,headers:[label.slice(0,-1),"Played","Wins","Losses","Win %"],rows:filteredReport.map(item=>[item.players.join(" + "),String(item.played),String(item.wins),String(item.losses),`${Math.round(item.rate)}%`]),summary:`${report.played} recorded games · ${report.wins} wins · ${report.losses} losses`};
+    const french=locale==="fr",winLabel=french?"Victoire":"Win",lossLabel=french?"Défaite":"Loss";
+    if(reportTab==="weekly"&&weeklyMatch){const values=Object.values(weeklyMatch.results??{});const wins=values.filter(value=>value==="W").length,losses=values.filter(value=>value==="L").length;return {title:`${teamName} · ${french?"Rapport hebdomadaire":"Weekly report"}`,subtitle:`${weeklyMatch.matchDate} · ${teamName} ${french?"contre":"vs"} ${weeklyMatch.opponent}`,headers:french?["Ronde","Terrain","Duo","Résultat"]:["Round","Court","Pair","Result"],rows:(weeklyMatch.lineup??[]).flatMap(round=>round.courts.map((pair,courtIndex)=>[String(round.round),`${french?"Terrain":"Court"} ${[weeklyMatch.court1,weeklyMatch.court2,weeklyMatch.court3][courtIndex]}`,pair.join(" + "),weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="W"?winLabel:weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="L"?lossLabel:"—"])),summary:french?`${wins} victoires · ${losses} défaites · ${values.length} parties enregistrées`:`${wins} wins · ${losses} losses · ${values.length} recorded games`};}
+    const label=reportEntity==="pairs"?(french?"Duos":"Pairs"):(french?"Joueurs":"Players");return {title:`${teamName} · ${french?"Statistiques d’équipe":"Team statistics"}`,subtitle:`${reportScope==="current"?activeSeason?.name??(french?"Saison en cours":"Current season"):(french?"Toutes les saisons":"All seasons")} · ${label} · ${french?"minimum":"minimum"} ${reportMinimumGames} ${french?"partie":"game"}${reportMinimumGames===1?"":"s"}`,headers:[french?(reportEntity==="pairs"?"Duo":"Joueur"):label.slice(0,-1),french?"Jouées":"Played",french?"Victoires":"Wins",french?"Défaites":"Losses","Win %"],rows:filteredReport.map(item=>[item.players.join(" + "),String(item.played),String(item.wins),String(item.losses),`${Math.round(item.rate)}%`]),summary:french?`${report.played} parties enregistrées · ${report.wins} victoires · ${report.losses} défaites`:`${report.played} recorded games · ${report.wins} wins · ${report.losses} losses`};
   }
   function escapeReportHtml(value:string){return value.replace(/[&<>\"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[character]??character))}
   async function copyReportImage(){
@@ -331,7 +332,7 @@ export default function Home() {
     context.fillStyle="#dff2e9";context.fillRect(padding,188,width-padding*2,58);context.fillStyle="#176b58";context.font="700 23px Arial";context.fillText(data.summary,padding+20,226);
     if(reportTab==="weekly"){
       const gameRows=data.rows,gridTop=382,gap=20,columnWidth=(width-padding*2-gap*2)/3,cardHeight=120;
-      context.fillStyle="#244340";context.font="700 30px Arial";context.fillText("Match results",padding,332);
+      context.fillStyle="#244340";context.font="700 30px Arial";context.fillText(locale==="fr"?"Résultats du match":"Match results",padding,332);
       [0,1,2].forEach(courtIndex=>{
         const x=padding+(columnWidth+gap)*courtIndex;
         context.fillStyle="#173f3a";context.fillRect(x,gridTop,columnWidth,54);
@@ -339,23 +340,23 @@ export default function Home() {
         gameRows.filter((_,index)=>index%3===courtIndex).forEach((row,roundIndex)=>{
           const y=gridTop+70+roundIndex*(cardHeight+12),result=row[3],pair=row[2].split(" + ");
           context.fillStyle="#ffffff";context.fillRect(x,y,columnWidth,cardHeight);
-          context.fillStyle="#647470";context.font="700 16px Arial";context.fillText(`ROUND ${row[0]}`,x+18,y+27);
+          context.fillStyle="#647470";context.font="700 16px Arial";context.fillText(`${locale==="fr"?"RONDE":"ROUND"} ${row[0]}`,x+18,y+27);
           context.fillStyle="#173f3a";
           const first=pair[0]||"",second=pair.slice(1).join(" + ")||"";let pairFontSize=20;
           context.font=`600 ${pairFontSize}px Arial`;
           while((context.measureText(first).width>columnWidth-95||context.measureText(second).width>columnWidth-95)&&pairFontSize>12){pairFontSize--;context.font=`600 ${pairFontSize}px Arial`}
           context.fillText(first,x+18,y+58);context.fillText(second,x+18,y+86);
-          context.fillStyle=result==="Win"?"#19805f":result==="Loss"?"#ba4a4a":"#71807c";context.beginPath();context.arc(x+columnWidth-39,y+60,23,0,Math.PI*2);context.fill();
-          context.fillStyle="#ffffff";context.font="700 17px Arial";context.textAlign="center";context.fillText(result==="Win"?"W":result==="Loss"?"L":"—",x+columnWidth-39,y+66);context.textAlign="left";
+          const isWin=result===(locale==="fr"?"Victoire":"Win"),isLoss=result===(locale==="fr"?"Défaite":"Loss");context.fillStyle=isWin?"#19805f":isLoss?"#ba4a4a":"#71807c";context.beginPath();context.arc(x+columnWidth-39,y+60,23,0,Math.PI*2);context.fill();
+          context.fillStyle="#ffffff";context.font="700 17px Arial";context.textAlign="center";context.fillText(isWin?"V":isLoss?"D":"—",x+columnWidth-39,y+66);context.textAlign="left";
         })
       });
     }else{
       const pairWidth=650,statWidth=(width-padding*2-pairWidth)/4,columnX=[padding,padding+pairWidth,padding+pairWidth+statWidth,padding+pairWidth+statWidth*2,padding+pairWidth+statWidth*3];
-      context.fillStyle="#244340";context.font="700 25px Arial";context.fillText(`${rows.length} pairs · selected filter`,padding,330);context.fillStyle="#173f3a";context.fillRect(padding,tableTop,width-padding*2,rowHeight);context.font="700 18px Arial";
+      context.fillStyle="#244340";context.font="700 25px Arial";context.fillText(locale==="fr"?`${rows.length} duos · filtre sélectionné`:`${rows.length} pairs · selected filter`,padding,330);context.fillStyle="#173f3a";context.fillRect(padding,tableTop,width-padding*2,rowHeight);context.font="700 18px Arial";
       data.headers.forEach((header,index)=>{context.fillStyle="#ffffff";context.fillText(header,columnX[index]+18,tableTop+47)});
       rows.forEach((row,rowIndex)=>{const y=tableTop+rowHeight*(rowIndex+1);context.fillStyle=rowIndex%2?"#ffffff":"#eef4f0";context.fillRect(padding,y,width-padding*2,rowHeight);row.forEach((cell,index)=>{context.fillStyle="#244340";if(index===0){let size=20;context.font=`600 ${size}px Arial`;while(context.measureText(cell).width>pairWidth-36&&size>13){size--;context.font=`600 ${size}px Arial`}context.fillText(cell,columnX[index]+18,y+48)}else{context.font="600 19px Arial";context.fillText(cell,columnX[index]+18,y+48)}})})
     }
-    context.fillStyle="#6b7975";context.font="17px Arial";context.fillText("Generated with PicklePilot",padding,height-38);
+    context.fillStyle="#6b7975";context.font="17px Arial";context.fillText(locale==="fr"?"Généré avec PicklePilot":"Generated with PicklePilot",padding,height-38);
     const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/png"));if(!blob){flash("The report image could not be created.");return}
     try{if(navigator.clipboard&&typeof ClipboardItem!=="undefined"){await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);flash("Image copied. Paste it directly into Messenger.");return}throw new Error("Image clipboard unavailable")}catch{const link=document.createElement("a"),url=URL.createObjectURL(blob);link.href=url;link.download="picklepilot-report.png";link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);flash("Image downloaded. Attach it in Messenger.")}
   }
