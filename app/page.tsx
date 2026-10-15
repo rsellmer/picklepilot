@@ -321,7 +321,7 @@ export default function Home() {
   function escapeReportHtml(value:string){return value.replace(/[&<>\"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[character]??character))}
   async function copyReportImage(){
     const data=reportExportData(),rows=reportTab==="statistics"?data.rows:[],width=1440,padding=72,rowHeight=76,tableTop=390;
-    const height=reportTab==="weekly"?1440:tableTop+(rows.length+1)*rowHeight+100,canvas=document.createElement("canvas");
+    const height=reportTab==="weekly"?1580:tableTop+(rows.length+1)*rowHeight+100,canvas=document.createElement("canvas");
     canvas.width=width;canvas.height=height;const context=canvas.getContext("2d");if(!context)return;
     context.fillStyle="#f6f5ef";context.fillRect(0,0,width,height);context.fillStyle="#173f3a";context.fillRect(0,0,width,260);
     const logo=await new Promise<HTMLImageElement|null>(resolve=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>resolve(null);image.src=brandLogo});
