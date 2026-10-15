@@ -314,14 +314,14 @@ export default function Home() {
 
   function generate(){if(selectedPlayers.length!==8||!mixedReady)return;const next=buildLineup(selectedPlayers,matches,playerRules,rules);if(!next.length){flash("No valid lineup for this roster. Select at most four women.");return}setLineup(next);setEditing(false);setSelected(null);flash("Best available lineup generated from pair rankings, game volume and active preferences.")}
   function sortReport(key:ReportSort){if(reportSort===key)setReportSortDirection(direction=>direction==="desc"?"asc":"desc");else{setReportSort(key);setReportSortDirection("desc")}}
-  function reportExportData(){
-    const french=locale==="fr",winLabel=french?"Victoire":"Win",lossLabel=french?"Défaite":"Loss";
+  function reportExportData(reportLocale:Locale=locale){
+    const french=reportLocale==="fr",winLabel=french?"Victoire":"Win",lossLabel=french?"Défaite":"Loss";
     if(reportTab==="weekly"&&weeklyMatch){const values=Object.values(weeklyMatch.results??{});const wins=values.filter(value=>value==="W").length,losses=values.filter(value=>value==="L").length;return {title:`${teamName} · ${french?"Rapport hebdomadaire":"Weekly report"}`,subtitle:`${weeklyMatch.matchDate} · ${teamName} ${french?"contre":"vs"} ${weeklyMatch.opponent}`,headers:french?["Ronde","Terrain","Duo","Résultat"]:["Round","Court","Pair","Result"],rows:(weeklyMatch.lineup??[]).flatMap(round=>round.courts.map((pair,courtIndex)=>[String(round.round),`${french?"Terrain":"Court"} ${[weeklyMatch.court1,weeklyMatch.court2,weeklyMatch.court3][courtIndex]}`,pair.join(" + "),weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="W"?winLabel:weeklyMatch.results?.[`${round.round}-${courtIndex+1}`]==="L"?lossLabel:"—"])),summary:french?`${wins} victoires · ${losses} défaites · ${values.length} parties enregistrées`:`${wins} wins · ${losses} losses · ${values.length} recorded games`};}
     const label=reportEntity==="pairs"?(french?"Duos":"Pairs"):(french?"Joueurs":"Players");return {title:`${teamName} · ${french?"Statistiques d’équipe":"Team statistics"}`,subtitle:`${reportScope==="current"?activeSeason?.name??(french?"Saison en cours":"Current season"):(french?"Toutes les saisons":"All seasons")} · ${label} · ${french?"minimum":"minimum"} ${reportMinimumGames} ${french?"partie":"game"}${reportMinimumGames===1?"":"s"}`,headers:[french?(reportEntity==="pairs"?"Duo":"Joueur"):label.slice(0,-1),french?"Jouées":"Played",french?"Victoires":"Wins",french?"Défaites":"Losses","Win %"],rows:filteredReport.map(item=>[item.players.join(" + "),String(item.played),String(item.wins),String(item.losses),`${Math.round(item.rate)}%`]),summary:french?`${report.played} parties enregistrées · ${report.wins} victoires · ${report.losses} défaites`:`${report.played} recorded games · ${report.wins} wins · ${report.losses} losses`};
   }
   function escapeReportHtml(value:string){return value.replace(/[&<>\"]/g,character=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[character]??character))}
   async function copyReportImage(){
-    const data=reportExportData(),rows=reportTab==="statistics"?data.rows:[],width=1440,padding=72,rowHeight=76,tableTop=390;
+    const activeLanguage=document.querySelector(".language-switch button.active")?.textContent?.trim(),reportLocale:Locale=activeLanguage==="FR"?"fr":"en",data=reportExportData(reportLocale),rows=reportTab==="statistics"?data.rows:[],width=1440,padding=72,rowHeight=76,tableTop=390;
     const height=reportTab==="weekly"?1580:tableTop+(rows.length+1)*rowHeight+100,canvas=document.createElement("canvas");
     canvas.width=width;canvas.height=height;const context=canvas.getContext("2d");if(!context)return;
     context.fillStyle="#f6f5ef";context.fillRect(0,0,width,height);context.fillStyle="#173f3a";context.fillRect(0,0,width,260);
@@ -332,7 +332,7 @@ export default function Home() {
     context.fillStyle="#dff2e9";context.fillRect(padding,188,width-padding*2,58);context.fillStyle="#176b58";context.font="700 23px Arial";context.fillText(data.summary,padding+20,226);
     if(reportTab==="weekly"){
       const gameRows=data.rows,gridTop=382,gap=20,columnWidth=(width-padding*2-gap*2)/3,cardHeight=120;
-      context.fillStyle="#244340";context.font="700 30px Arial";context.fillText(locale==="fr"?"Résultats du match":"Match results",padding,332);
+      context.fillStyle="#244340";context.font="700 30px Arial";context.fillText(reportLocale==="fr"?"Résultats du match":"Match results",padding,332);
       [0,1,2].forEach(courtIndex=>{
         const x=padding+(columnWidth+gap)*courtIndex;
         context.fillStyle="#173f3a";context.fillRect(x,gridTop,columnWidth,54);
@@ -340,25 +340,25 @@ export default function Home() {
         gameRows.filter((_,index)=>index%3===courtIndex).forEach((row,roundIndex)=>{
           const y=gridTop+70+roundIndex*(cardHeight+12),result=row[3],pair=row[2].split(" + ");
           context.fillStyle="#ffffff";context.fillRect(x,y,columnWidth,cardHeight);
-          context.fillStyle="#647470";context.font="700 16px Arial";context.fillText(`${locale==="fr"?"RONDE":"ROUND"} ${row[0]}`,x+18,y+27);
+          context.fillStyle="#647470";context.font="700 16px Arial";context.fillText(`${reportLocale==="fr"?"RONDE":"ROUND"} ${row[0]}`,x+18,y+27);
           context.fillStyle="#173f3a";
           const first=pair[0]||"",second=pair.slice(1).join(" + ")||"";let pairFontSize=20;
           context.font=`600 ${pairFontSize}px Arial`;
           while((context.measureText(first).width>columnWidth-95||context.measureText(second).width>columnWidth-95)&&pairFontSize>12){pairFontSize--;context.font=`600 ${pairFontSize}px Arial`}
           context.fillText(first,x+18,y+58);context.fillText(second,x+18,y+86);
-          const isWin=result===(locale==="fr"?"Victoire":"Win"),isLoss=result===(locale==="fr"?"Défaite":"Loss");context.fillStyle=isWin?"#19805f":isLoss?"#ba4a4a":"#71807c";context.beginPath();context.arc(x+columnWidth-39,y+60,23,0,Math.PI*2);context.fill();
+          const isWin=result===(reportLocale==="fr"?"Victoire":"Win"),isLoss=result===(reportLocale==="fr"?"Défaite":"Loss");context.fillStyle=isWin?"#19805f":isLoss?"#ba4a4a":"#71807c";context.beginPath();context.arc(x+columnWidth-39,y+60,23,0,Math.PI*2);context.fill();
           context.fillStyle="#ffffff";context.font="700 17px Arial";context.textAlign="center";context.fillText(isWin?"V":isLoss?"D":"—",x+columnWidth-39,y+66);context.textAlign="left";
         })
       });
     }else{
       const pairWidth=650,statWidth=(width-padding*2-pairWidth)/4,columnX=[padding,padding+pairWidth,padding+pairWidth+statWidth,padding+pairWidth+statWidth*2,padding+pairWidth+statWidth*3];
-      context.fillStyle="#244340";context.font="700 25px Arial";context.fillText(locale==="fr"?`${rows.length} duos · filtre sélectionné`:`${rows.length} pairs · selected filter`,padding,330);context.fillStyle="#173f3a";context.fillRect(padding,tableTop,width-padding*2,rowHeight);context.font="700 18px Arial";
+      context.fillStyle="#244340";context.font="700 25px Arial";context.fillText(reportLocale==="fr"?`${rows.length} duos · filtre sélectionné`:`${rows.length} pairs · selected filter`,padding,330);context.fillStyle="#173f3a";context.fillRect(padding,tableTop,width-padding*2,rowHeight);context.font="700 18px Arial";
       data.headers.forEach((header,index)=>{context.fillStyle="#ffffff";context.fillText(header,columnX[index]+18,tableTop+47)});
       rows.forEach((row,rowIndex)=>{const y=tableTop+rowHeight*(rowIndex+1);context.fillStyle=rowIndex%2?"#ffffff":"#eef4f0";context.fillRect(padding,y,width-padding*2,rowHeight);row.forEach((cell,index)=>{context.fillStyle="#244340";if(index===0){let size=20;context.font=`600 ${size}px Arial`;while(context.measureText(cell).width>pairWidth-36&&size>13){size--;context.font=`600 ${size}px Arial`}context.fillText(cell,columnX[index]+18,y+48)}else{context.font="600 19px Arial";context.fillText(cell,columnX[index]+18,y+48)}})})
     }
-    context.fillStyle="#6b7975";context.font="17px Arial";context.fillText(locale==="fr"?"Généré avec PicklePilot":"Generated with PicklePilot",padding,height-38);
+    context.fillStyle="#6b7975";context.font="17px Arial";context.fillText(reportLocale==="fr"?"Généré avec PicklePilot":"Generated with PicklePilot",padding,height-38);
     const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/png"));if(!blob){flash("The report image could not be created.");return}
-    try{if(navigator.clipboard&&typeof ClipboardItem!=="undefined"){await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);flash("Image copied. Paste it directly into Messenger.");return}throw new Error("Image clipboard unavailable")}catch{const link=document.createElement("a"),url=URL.createObjectURL(blob);link.href=url;link.download="picklepilot-report.png";link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);flash("Image downloaded. Attach it in Messenger.")}
+    try{if(navigator.clipboard&&typeof ClipboardItem!=="undefined"){await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]);flash(reportLocale==="fr"?"Image copiée. Collez-la directement dans Messenger.":"Image copied. Paste it directly into Messenger.");return}throw new Error("Image clipboard unavailable")}catch{const link=document.createElement("a"),url=URL.createObjectURL(blob);link.href=url;link.download="picklepilot-report.png";link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000);flash(reportLocale==="fr"?"Image téléchargée. Ajoutez-la dans Messenger.":"Image downloaded. Attach it in Messenger.")}
   }
 
   function printReport(){const data=reportExportData();const popup=window.open("","_blank");if(!popup){flash("Please allow pop-ups to export the PDF.");return}const table=`<table><thead><tr>${data.headers.map(item=>`<th>${escapeReportHtml(item)}</th>`).join("")}</tr></thead><tbody>${data.rows.map(row=>`<tr>${row.map(item=>`<td>${escapeReportHtml(item)}</td>`).join("")}</tr>`).join("")}</tbody></table>`;popup.document.open();popup.document.write(`<!doctype html><html><head><title>${escapeReportHtml(data.title)}</title><style>body{font-family:Arial,sans-serif;color:#173432;padding:34px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:16px}.brand img{width:46px;height:46px}h1{margin:0 0 6px;font-size:25px}p{color:#687573;margin:0 0 22px}.summary{padding:13px 15px;margin-bottom:18px;border-radius:10px;background:#eaf7f0;color:#176b58;font-weight:bold}table{width:100%;border-collapse:collapse}th{text-align:left;padding:11px;background:#173f3a;color:#fff;font-size:11px}td{padding:11px;border-bottom:1px solid #dfe5df;font-size:12px}@media print{@page{size:landscape;margin:.35in}}</style></head><body><div class="brand"><img src="${brandLogo}" alt="PicklePilot"/><h1>${escapeReportHtml(data.title)}</h1></div><p>${escapeReportHtml(data.subtitle)}</p><div class="summary">${escapeReportHtml(data.summary)}</div>${table}<p style="margin-top:24px;font-size:10px">Generated with PicklePilot</p></body></html>`);popup.document.close();popup.addEventListener("afterprint",()=>popup.close(),{once:true});window.setTimeout(()=>{popup.focus();popup.print()},500)}
