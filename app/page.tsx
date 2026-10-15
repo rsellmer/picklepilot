@@ -340,10 +340,10 @@ export default function Home() {
           const y=gridTop+70+roundIndex*(cardHeight+12),result=row[3],pair=row[2].split(" + ");
           context.fillStyle="#ffffff";context.fillRect(x,y,columnWidth,cardHeight);
           context.fillStyle="#647470";context.font="700 16px Arial";context.fillText(`ROUND ${row[0]}`,x+18,y+27);
-          context.fillStyle="#173f3a";context.font="600 20px Arial";
-          let first=pair[0]||"",second=pair.slice(1).join(" + ")||"";
-          while(context.measureText(first).width>columnWidth-95&&first.length>1){first=first.slice(0,-1)}
-          while(context.measureText(second).width>columnWidth-95&&second.length>1){second=second.slice(0,-1)}
+          context.fillStyle="#173f3a";
+          const first=pair[0]||"",second=pair.slice(1).join(" + ")||"";let pairFontSize=20;
+          context.font=`600 ${pairFontSize}px Arial`;
+          while((context.measureText(first).width>columnWidth-95||context.measureText(second).width>columnWidth-95)&&pairFontSize>12){pairFontSize--;context.font=`600 ${pairFontSize}px Arial`}
           context.fillText(first,x+18,y+58);context.fillText(second,x+18,y+86);
           context.fillStyle=result==="Win"?"#19805f":result==="Loss"?"#ba4a4a":"#71807c";context.beginPath();context.arc(x+columnWidth-39,y+60,23,0,Math.PI*2);context.fill();
           context.fillStyle="#ffffff";context.font="700 17px Arial";context.textAlign="center";context.fillText(result==="Win"?"W":result==="Loss"?"L":"—",x+columnWidth-39,y+66);context.textAlign="left";
