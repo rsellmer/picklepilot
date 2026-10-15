@@ -84,6 +84,8 @@ const french: Record<string, string> = {
   "Minimum games": "Minimum de parties",
   "Real ranking": "Classement réel",
   "Adjusted ranking": "Classement ajusté",
+  "ADJUSTED POINTS": "POINTS AJUSTÉS",
+  "Adjusted points start at 50 and become more reliable as games are played.": "Les points ajustés commencent à 50 et deviennent plus fiables à mesure que les parties sont jouées
   "No results for this filter": "Aucun résultat pour ce filtre",
   "Try a lower minimum number of games.": "Essayez un nombre minimum de parties moins élevé.",
   "No results yet": "Aucun résultat pour le moment",
