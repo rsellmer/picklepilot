@@ -69,6 +69,7 @@ const french: Record<string, string> = {
   "WINS": "VICTOIRES",
   "LOSSES": "DÉFAITES",
   "Share summary": "Partager le résumé",
+  "Copy image": "Copier l’image",
   "Print / PDF": "Imprimer / PDF",
   "No weekly report yet": "Aucun rapport hebdomadaire",
   "Save results for a match and its shareable weekly report will appear here.": "Enregistrez les résultats d’un match pour créer son rapport hebdomadaire partageable.",
