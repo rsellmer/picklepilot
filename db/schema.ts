@@ -101,6 +101,14 @@ export const appSessions = sqliteTable("app_sessions", {
 });
 
 
+export const passwordResetTokens = sqliteTable("password_reset_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const availabilityPolls = sqliteTable("availability_polls", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   matchId: integer("match_id").notNull().unique(),
