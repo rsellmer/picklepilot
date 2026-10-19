@@ -251,6 +251,22 @@ const fourWomenTemplate = Array.from({ length: 8 }, (_, round) => {
     [round % 4, 4 + ((round + Math.floor(round / 4)) % 4)],
   ];
 });
+// The Development format has two women's doubles and several mixed doubles.
+// Unlike the standard template, it needs the two women in specific slots so
+// that both can rest twice while every required court stays valid.
+const twoWomenDevelopmentTemplate = [
+  [[0, 4], [5, 6], [1, 7], [2, 3]],
+  [[2, 3], [0, 1], [6, 7], [4, 5]],
+  [[2, 3], [4, 5], [0, 7], [1, 6]],
+  [[2, 3], [1, 4], [5, 6], [0, 7]],
+  [[0, 4], [5, 6], [1, 7], [2, 3]],
+  [[2, 3], [0, 1], [6, 7], [4, 5]],
+  [[2, 3], [4, 5], [0, 7], [1, 6]],
+  [[1, 4], [2, 3], [5, 6], [0, 7]],
+];
+const isDevelopmentPattern = (courtTypes: CourtType[]) =>
+  courtTypes.length === developmentCourtTypes.length &&
+  courtTypes.every((type, index) => type === developmentCourtTypes[index]);
 function buildLineup(
   roster: Player[],
   history: Match[],
@@ -269,7 +285,15 @@ function buildLineup(
     return [];
   const fourWomen =
     roster.filter((player) => player.gender === "W").length === 4;
-  const schedule = fourWomen ? fourWomenTemplate : template;
+  const twoWomenDevelopment =
+    roster.filter((player) => player.gender === "W").length === 2 &&
+    roster.filter((player) => player.gender === "M").length === 6 &&
+    isDevelopmentPattern(courtTypes);
+  const schedule = fourWomen
+    ? fourWomenTemplate
+    : twoWomenDevelopment
+      ? twoWomenDevelopmentTemplate
+      : template;
   const historyStats = new Map<
     string,
     { played: number; performance: number }
@@ -362,7 +386,9 @@ function buildLineup(
     for (let index = 0; index < roster.length; index++) {
       if (
         used[index] ||
-        (fourWomen && roster[index].gender !== (ordered.length < 4 ? "W" : "M"))
+        (fourWomen && roster[index].gender !== (ordered.length < 4 ? "W" : "M")) ||
+        (twoWomenDevelopment &&
+          roster[index].gender !== (ordered.length < 2 ? "W" : "M"))
       )
         continue;
       used[index] = true;
