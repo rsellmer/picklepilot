@@ -1,4 +1,5 @@
 import { and, eq, gt } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { getDb } from "../../../db";
 import { appSessions, appUsers } from "../../../db/schema";
 
@@ -8,10 +9,9 @@ export const randomHex=(length=32)=>{const bytes=new Uint8Array(length);crypto.g
 export async function hashPassword(password:string,salt:string){const key=await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:encoder.encode(salt),iterations:100000,hash:"SHA-256"},key,256);return hex(new Uint8Array(bits))}
 export async function hashToken(token:string){const digest=await crypto.subtle.digest("SHA-256",encoder.encode(token));return hex(new Uint8Array(digest))}
 export function resendApiKey(){
+  const bindingKey=env.RESEND_API_KEY as string|undefined;
   const runtimeKey=(globalThis as typeof globalThis & { __PICKLEPILOT_RESEND_API_KEY__?: string }).__PICKLEPILOT_RESEND_API_KEY__;
-  // Cloudflare's Node compatibility layer also exposes Worker bindings here.
-  // Keep this fallback so a request is never dependent on one runtime bridge.
-  return runtimeKey??process.env.RESEND_API_KEY;
+  return bindingKey??runtimeKey??process.env.RESEND_API_KEY;
 }
 export function sessionToken(request:Request){return request.headers.get("cookie")?.match(/(?:^|; )picklepilot_session=([^;]+)/)?.[1]??null}
 export async function currentUser(request:Request){const token=sessionToken(request);if(!token)return null;const tokenHash=await hashToken(token);const [row]=await getDb().select({id:appUsers.id,username:appUsers.username,role:appUsers.role,teamId:appUsers.teamId}).from(appSessions).innerJoin(appUsers,eq(appSessions.userId,appUsers.id)).where(and(eq(appSessions.tokenHash,tokenHash),gt(appSessions.expiresAt,new Date().toISOString())));return row??null}
