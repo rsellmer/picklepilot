@@ -5,9 +5,6 @@
   "compatibility_date": "2026-09-25",
   "compatibility_flags": ["nodejs_compat"],
   "keep_vars": true,
-  "secrets": {
-    "required": ["RESEND_API_KEY"]
-  },
   "assets": {
     "directory": "dist/client",
     "binding": "ASSETS"
