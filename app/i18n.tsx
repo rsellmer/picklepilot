@@ -130,6 +130,8 @@ const french: Record<string, string> = {
   "Loss": "Défaite",
   "Tie": "Égalité",
   "Women": "Femmes",
+  "Open": "Libre",
+  "Mixed": "Mixte",
   "WOMEN": "FEMMES",
   "Competition format": "Format de compétition",
   "Use the suggested pattern, then adjust any court. Pink marks women’s positions.": "Utilisez le modèle suggéré, puis ajustez chaque terrain. Le rose indique les positions féminines.",
@@ -661,6 +663,7 @@ export function translateValue(value: string, locale: Locale) {
       .replace(/^(\d+) photo results applied\. Review the remaining courts\.$/, "$1 résultats de la photo appliqués. Vérifiez les autres terrains.")
       .replace(/^Round (\d+), court (\d+): women cannot play together$/, "Manche $1, terrain $2 : deux femmes ne peuvent pas jouer ensemble")
       .replace(/^Round (\d+), court (\d+): mixed doubles required$/, "Manche $1, terrain $2 : duo mixte obligatoire")
+      .replace(/^Round (\d+), court (\d+): women's doubles required$/, "Manche $1, terrain $2 : duo féminin obligatoire")
       .replace(/^(.+) is now the active season\.$/, "$1 est maintenant la saison active.");
     if (translated === trimmed) translated = trimmed
       .replace(/^Round (\d+): (.+) appears more than once$/, "Manche $1 : $2 apparaît plus d’une fois")
@@ -699,6 +702,7 @@ export function translateValue(value: string, locale: Locale) {
       .replace(/^(\d+) résultats de la photo appliqués\. Vérifiez les autres terrains\.$/, "$1 photo results applied. Review the remaining courts.")
       .replace(/^Manche (\d+), terrain (\d+) : deux femmes ne peuvent pas jouer ensemble$/, "Round $1, court $2: women cannot play together")
       .replace(/^Manche (\d+), terrain (\d+) : duo mixte obligatoire$/, "Round $1, court $2: mixed doubles required")
+      .replace(/^Manche (\d+), terrain (\d+) : duo féminin obligatoire$/, "Round $1, court $2: women's doubles required")
       .replace(/^(.+) est maintenant la saison active\.$/, "$1 is now the active season.");
     if (translated === trimmed) translated = trimmed
       .replace(/^Manche (\d+) : (.+) apparaît plus d’une fois$/, "Round $1: $2 appears more than once")
