@@ -28,6 +28,7 @@ interface ExecutionContext {
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Runtime bindings, including encrypted secrets, are refreshed on deployment.
     (globalThis as typeof globalThis & { __PICKLEPILOT_DB__?: D1Database }).__PICKLEPILOT_DB__ = env.DB;
     (globalThis as typeof globalThis & { __PICKLEPILOT_RESEND_API_KEY__?: string }).__PICKLEPILOT_RESEND_API_KEY__ = env.RESEND_API_KEY;
     const url = new URL(request.url);
