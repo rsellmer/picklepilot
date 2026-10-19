@@ -28,7 +28,18 @@ JSON.parse(await readFile(hostingPath, "utf8"));
 
 const workerUrl = pathToFileURL(workerPath);
 workerUrl.searchParams.set("sites-validation", `${process.pid}-${Date.now()}`);
-const worker = await import(workerUrl.href);
+let worker;
+try {
+  worker = await import(workerUrl.href);
+} catch (error) {
+  // Worker bindings are resolved by workerd, not Node. The production Worker
+  // can therefore import cloudflare:workers even though this local validator cannot.
+  if (error?.code === "ERR_UNSUPPORTED_ESM_URL_SCHEME" && String(error.message).includes("cloudflare:")) {
+    console.log("Skipped Node import check for native Cloudflare Worker bindings.");
+    process.exit(0);
+  }
+  throw error;
+}
 if (!worker.default || typeof worker.default.fetch !== "function") {
   throw new Error("dist/server/index.js must have an ESM default export with fetch(request, env, ctx)");
 }
