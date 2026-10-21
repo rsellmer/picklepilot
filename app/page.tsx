@@ -330,7 +330,7 @@ function buildPreferenceLineup(
             : total,
         0,
       );
-      return score + priority + pairPerformance(a, b);
+      return score + priority + pairPerformance(a, b) * 4;
     }, 0);
   const optionsForRound = (round: number): NumericRound[] => {
     const options: NumericRound[] = [];
@@ -441,7 +441,10 @@ function buildPreferenceLineup(
           const count = (pairCounts.get(key) ?? 0) + 1;
           pairCounts.set(key, count);
           currentPairs.add(key);
-          score += pairPerformance(a, b);
+          // Historical performance is a meaningful preference among legal
+          // choices. Explicit captain rules and fixed competition rules still
+          // take precedence over it.
+          score += pairPerformance(a, b) * 4;
           if (rules.avoidConsecutivePartners && state.previousPairs.has(key))
             score -= 250;
           if (rules.preferMaxTwo && count > 2) score -= 120;
@@ -671,6 +674,7 @@ type GenerationInsight = { ok: boolean; text: string };
 function explainGeneratedLineup(
   lineup: Round[],
   roster: Player[],
+  history: Match[],
   playerRules: PlayerRule[],
   rules: RuleSettings,
   courtTypes: CourtType[],
@@ -678,6 +682,20 @@ function explainGeneratedLineup(
 ): GenerationInsight[] {
   const fr = locale === "fr";
   const insights: GenerationInsight[] = [];
+  const historicalPairs = new Map<string, { wins: number; games: number }>();
+  history.forEach((match) =>
+    match.lineup?.forEach((round) =>
+      round.courts.forEach((pair, court) => {
+        const result = match.results?.[`${round.round}-${court + 1}`];
+        if (!result) return;
+        const key = [...pair].sort().join("|");
+        const stat = historicalPairs.get(key) ?? { wins: 0, games: 0 };
+        stat.games++;
+        if (result === "W") stat.wins++;
+        historicalPairs.set(key, stat);
+      }),
+    ),
+  );
   if (rules.avoidBackToBackRest) {
     const repeated = lineup.some((round, index) =>
       index > 0 && round.rest.some((name) => lineup[index - 1].rest.includes(name)),
@@ -727,11 +745,43 @@ function explainGeneratedLineup(
         : `⚠ ${a} + ${b}: ${count}/${rule.minimumGames}${scope}.${reason}`,
     });
   });
+  const selectedPairCounts = new Map<string, number>();
+  lineup.forEach((round) => round.courts.forEach((pair) => {
+    const key = [...pair].sort().join("|");
+    selectedPairCounts.set(key, (selectedPairCounts.get(key) ?? 0) + 1);
+  }));
+  const historyUsed = [...selectedPairCounts.entries()]
+    .map(([key, selected]) => ({ key, selected, stat: historicalPairs.get(key) }))
+    .filter((item): item is { key: string; selected: number; stat: { wins: number; games: number } } => !!item.stat && item.stat.games >= 3)
+    .sort((a, b) =>
+      b.stat.wins / b.stat.games - a.stat.wins / a.stat.games ||
+      b.stat.games - a.stat.games,
+    )
+    .slice(0, 3)
+    .map((item) => {
+      const percent = Math.round((item.stat.wins / item.stat.games) * 100);
+      return `${item.key.replace("|", " + ")} : ${item.stat.wins}/${item.stat.games} (${percent} %)`;
+    });
+  if (historyUsed.length) {
+    insights.push({
+      ok: true,
+      text: fr
+        ? `Duos favorisés selon leurs résultats : ${historyUsed.join(" · ")}.`
+        : `Pairs favoured from their results: ${historyUsed.join(" · ")}.`,
+    });
+  } else {
+    insights.push({
+      ok: true,
+      text: fr
+        ? "Pas encore assez de résultats pour favoriser une double historique; les duos sont traités de façon neutre."
+        : "Not enough recorded results yet to favour historical pairs; pairs are treated neutrally.",
+    });
+  }
   insights.push({
     ok: true,
     text: fr
-      ? "Critères de départage : diversité des duos, puis performance historique ajustée selon la force de l’adversaire."
-      : "Tie-breakers: pair variety, then historical performance adjusted for opponent strength.",
+      ? "Les résultats sont pondérés par le nombre de matchs et ajustés selon la force de l’adversaire; ils ne remplacent jamais les règles fixes."
+      : "Results are weighted by games played and adjusted for opponent strength; they never override fixed rules.",
   });
   return insights;
 }
@@ -1890,6 +1940,7 @@ export default function Home() {
       explainGeneratedLineup(
         next,
         selectedPlayers,
+        matches,
         playerRules,
         rules,
         courtTypes,
