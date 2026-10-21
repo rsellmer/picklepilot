@@ -1,0 +1,1 @@
+ALTER TABLE team_settings ADD COLUMN lineup_rules TEXT NOT NULL DEFAULT '{"avoidConsecutivePartners":true,"preferMaxTwo":true,"blockAboveThree":true,"avoidBackToBackRest":true,"avoidLongStreaks":true}';
