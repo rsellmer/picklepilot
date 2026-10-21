@@ -375,11 +375,23 @@ function buildPreferenceLineup(
     });
     const focused = [...byRest.values()].flatMap((group) => {
       group.sort((a, b) => optionPriority(b, round) - optionPriority(a, round));
+      // Retain the strongest half, but deliberately sample the rest of the
+      // group as well. When scores are initially tied (for example 1 woman
+      // and 7 men), taking only the first entries repeated the same men's
+      // partnerships and could falsely make the "maximum 3" rule impossible.
+      const topCount = Math.min(group.length, Math.ceil(optionLimit / 2));
+      const chosen = [...group.slice(0, topCount)];
+      const remaining = Math.min(optionLimit - chosen.length, group.length - chosen.length);
+      for (let index = 0; index < remaining; index++) {
+        const position = topCount + Math.floor(
+          ((index + 1) * (group.length - topCount)) / (remaining + 1),
+        );
+        if (group[position]) chosen.push(group[position]);
+      }
       const offset = variation
-        ? (variation * 7 + round * 3) % Math.min(group.length, optionLimit)
+        ? (variation * 7 + round * 3) % Math.max(chosen.length, 1)
         : 0;
-      const rotated = [...group.slice(offset), ...group.slice(0, offset)];
-      return rotated.slice(0, optionLimit);
+      return [...chosen.slice(offset), ...chosen.slice(0, offset)];
     });
     // A new generation intentionally explores the equally-ranked alternatives
     // in a different order. It never relaxes a rule to do so.
