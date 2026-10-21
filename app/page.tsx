@@ -280,8 +280,9 @@ function buildPreferenceLineup(
   rules: RuleSettings,
   courtTypes: CourtType[],
   variation = 0,
+  optionLimit = 16,
+  beamLimit = 360,
 ): Round[] | null {
-  if (!playerRules.length) return null;
   const playerRuleMap = new Map<string, PlayerRule[]>();
   playerRules.forEach((rule) => {
     const a = roster.findIndex((player) => player.id === rule.playerAId);
@@ -375,10 +376,10 @@ function buildPreferenceLineup(
     const focused = [...byRest.values()].flatMap((group) => {
       group.sort((a, b) => optionPriority(b, round) - optionPriority(a, round));
       const offset = variation
-        ? (variation * 7 + round * 3) % Math.min(group.length, 16)
+        ? (variation * 7 + round * 3) % Math.min(group.length, optionLimit)
         : 0;
       const rotated = [...group.slice(offset), ...group.slice(0, offset)];
-      return rotated.slice(0, 16);
+      return rotated.slice(0, optionLimit);
     });
     // A new generation intentionally explores the equally-ranked alternatives
     // in a different order. It never relaxes a rule to do so.
@@ -486,10 +487,10 @@ function buildPreferenceLineup(
         .map((rule) => Math.min(rule.minimumGames, state.ruleCounts.get(rule.id) ?? 0))
         .join("|");
       const kept = perProgress.get(progress) ?? 0;
-      if (kept >= 45) return false;
+      if (kept >= Math.max(45, Math.floor(beamLimit / 8))) return false;
       perProgress.set(progress, kept + 1);
       return true;
-    }).slice(0, 360);
+    }).slice(0, beamLimit);
     if (!beam.length) return null;
   }
   const complete = beam.filter((state) => state.rests.every((count) => count === 2));
@@ -521,6 +522,13 @@ function buildLineup(
   courtTypes: CourtType[],
   variation = 0,
 ): Round[] {
+  // A preference only applies when both of its players are selected for this
+  // match. A captain may change the eight available players from week to week.
+  const applicablePlayerRules = playerRules.filter(
+    (rule) =>
+      roster.some((player) => player.id === rule.playerAId) &&
+      roster.some((player) => player.id === rule.playerBId),
+  );
   const neededWomen = courtTypes.includes("women") ? 2 : 0;
   if (
     roster.length !== 8 ||
@@ -530,15 +538,40 @@ function buildLineup(
         !roster.some((player) => player.gender === "M")))
   )
     return [];
-  const preferenceLineup = buildPreferenceLineup(
-    roster,
-    history,
-    playerRules,
-    rules,
-    courtTypes,
-    variation,
-  );
-  if (preferenceLineup) return preferenceLineup;
+  const womenInRoster = roster.filter((player) => player.gender === "W").length;
+  // The classic template assumes either four women or the usual development
+  // split. A flexible search is needed for a legitimate selection such as one
+  // woman and seven men, even if no player preference applies that week.
+  const needsFlexibleSearch =
+    applicablePlayerRules.length > 0 ||
+    womenInRoster === 1 ||
+    womenInRoster === 3 ||
+    womenInRoster >= 5;
+  if (needsFlexibleSearch) {
+    let preferenceLineup = buildPreferenceLineup(
+      roster,
+      history,
+      applicablePlayerRules,
+      rules,
+      courtTypes,
+      variation,
+    );
+    // Rare gender/constraint combinations can need an alternative that is
+    // outside the fast shortlist. Retry only in that case, not for normal
+    // lineups, so the screen remains fast.
+    if (!preferenceLineup)
+      preferenceLineup = buildPreferenceLineup(
+        roster,
+        history,
+        applicablePlayerRules,
+        rules,
+        courtTypes,
+        variation,
+        32,
+        720,
+      );
+    if (preferenceLineup) return preferenceLineup;
+  }
   const fourWomen =
     roster.filter((player) => player.gender === "W").length === 4;
   const twoWomenDevelopment =
@@ -615,7 +648,10 @@ function buildLineup(
       if (rules.preferMaxTwo && count > 2) score -= (count - 2) * 70;
       if (rules.blockAboveThree && count > 3) return -Infinity;
     }
-    playerRules.forEach((rule) => {
+    playerRules.filter((rule) =>
+      selectedPlayers.some((player) => player.id === rule.playerAId) &&
+      selectedPlayers.some((player) => player.id === rule.playerBId),
+    ).forEach((rule) => {
       const a = roster.find((player) => player.id === rule.playerAId)?.name,
         b = roster.find((player) => player.id === rule.playerBId)?.name;
       if (!a || !b) return;
@@ -1300,7 +1336,12 @@ export default function Home() {
       return locale === "fr"
         ? "Conflit de règles : l’option « Bloquer deux femmes jouant ensemble » est active alors que le format contient des terrains « Femmes ». Désactivez cette option ou modifiez le format des terrains."
         : "Rule conflict: “Block two women playing together” is enabled while the format contains women's courts. Disable this option or change the court format.";
-    if (playerRules.length)
+    const applicableRules = playerRules.filter(
+      (rule) =>
+        selectedPlayers.some((player) => player.id === rule.playerAId) &&
+        selectedPlayers.some((player) => player.id === rule.playerBId),
+    );
+    if (applicableRules.length)
       return locale === "fr"
         ? "Les préférences entre joueurs ne peuvent pas toutes être respectées avec cette sélection et ce format. Modifiez les préférences ou sélectionnez d’autres joueurs."
         : "The player preferences cannot all be met with this selection and format. Adjust the preferences or select different players.";
@@ -1580,7 +1621,10 @@ export default function Home() {
       if (rules.blockAboveThree && c > 3)
         blocking.push(`${pair.replace("|", " + ")} play together ${c} times (maximum 3)`);
     });
-    playerRules.forEach((rule) => {
+    playerRules.filter((rule) =>
+      selectedPlayers.some((player) => player.id === rule.playerAId) &&
+      selectedPlayers.some((player) => player.id === rule.playerBId),
+    ).forEach((rule) => {
       const a = players.find((player) => player.id === rule.playerAId)?.name,
         b = players.find((player) => player.id === rule.playerBId)?.name;
       if (!a || !b) return;
@@ -1930,6 +1974,7 @@ export default function Home() {
       const issue = generationFailureMessage();
       setGenerationIssue(issue);
       setGenerationInsights([]);
+      setLineup([]);
       flash(issue);
       return;
     }
@@ -3133,15 +3178,20 @@ export default function Home() {
                     className={
                       available.includes(player.id) ? "player active" : "player"
                     }
-                    onClick={() =>
+                    onClick={() => {
                       setAvailable((ids) =>
                         ids.includes(player.id)
                           ? ids.filter((id) => id !== player.id)
                           : ids.length < 8
                             ? [...ids, player.id]
                             : ids,
-                      )
-                    }
+                      );
+                      // An existing lineup belongs to the prior roster and
+                      // must never be validated against a changed selection.
+                      setLineup([]);
+                      setGenerationInsights([]);
+                      setGenerationIssue("");
+                    }}
                   >
                     <span>{player.name.slice(0, 2).toUpperCase()}</span>
                     <div>
