@@ -625,6 +625,79 @@ function buildLineup(
   }));
 }
 
+type GenerationInsight = { ok: boolean; text: string };
+
+// This is deliberately based on the generated lineup, rather than on the
+// requested settings. It lets a captain see what the optimizer actually used
+// for this particular result and makes an unmet preference explicit.
+function explainGeneratedLineup(
+  lineup: Round[],
+  roster: Player[],
+  playerRules: PlayerRule[],
+  rules: RuleSettings,
+  courtTypes: CourtType[],
+  locale: Locale,
+): GenerationInsight[] {
+  const fr = locale === "fr";
+  const insights: GenerationInsight[] = [];
+  if (rules.avoidBackToBackRest) {
+    const repeated = lineup.some((round, index) =>
+      index > 0 && round.rest.some((name) => lineup[index - 1].rest.includes(name)),
+    );
+    insights.push({
+      ok: !repeated,
+      text: repeated
+        ? fr ? "Repos consécutif détecté." : "A consecutive rest was detected."
+        : fr ? "Aucun joueur n’a deux repos consécutifs." : "No player has consecutive rests.",
+    });
+  }
+  playerRules.forEach((rule) => {
+    const a = roster.find((player) => player.id === rule.playerAId)?.name;
+    const b = roster.find((player) => player.id === rule.playerBId)?.name;
+    if (!a || !b) return;
+    let count = 0;
+    lineup.forEach((round) => round.courts.forEach((pair, court) => {
+      const courtType = courtTypeAt(courtTypes, round.round, court);
+      const applies = rule.courtType === "any" || rule.courtType === courtType;
+      if (applies && pair.includes(a) && pair.includes(b)) count++;
+    }));
+    const scope = rule.courtType === "mixed"
+      ? fr ? " en mixte" : " on mixed courts"
+      : rule.courtType === "women"
+        ? fr ? " sur terrain Femmes" : " on women’s courts"
+        : "";
+    if (rule.ruleType === "Avoid") {
+      insights.push({
+        ok: count === 0,
+        text: count === 0
+          ? `✓ ${a} + ${b}: ${fr ? "évités" : "avoided"}${scope}.`
+          : `⚠ ${a} + ${b}: ${fr ? `${count} match ensemble malgré la préférence` : `${count} game${count > 1 ? "s" : ""} together despite the preference`}${scope}.`,
+      });
+      return;
+    }
+    const ok = count >= rule.minimumGames;
+    const configuredCourts = rule.courtType === "any"
+      ? 24
+      : courtTypes.filter((type) => type === rule.courtType).length;
+    const reason = configuredCourts < rule.minimumGames
+      ? fr ? ` Seulement ${configuredCourts} terrain(s) admissible(s) est/sont configuré(s).` : ` Only ${configuredCourts} eligible court${configuredCourts === 1 ? " is" : "s are"} configured.`
+      : fr ? " Les autres règles obligatoires ont été conservées." : " The other mandatory rules were preserved.";
+    insights.push({
+      ok,
+      text: ok
+        ? `✓ ${a} + ${b}: ${count}/${rule.minimumGames}${scope}.`
+        : `⚠ ${a} + ${b}: ${count}/${rule.minimumGames}${scope}.${reason}`,
+    });
+  });
+  insights.push({
+    ok: true,
+    text: fr
+      ? "Critères de départage : diversité des duos, puis performance historique ajustée selon la force de l’adversaire."
+      : "Tie-breakers: pair variety, then historical performance adjusted for opponent strength.",
+  });
+  return insights;
+}
+
 function Sidebar({
   page,
   go,
@@ -916,6 +989,7 @@ export default function Home() {
   const [ruleCourtType, setRuleCourtType] = useState<"any" | "mixed" | "women">("any");
   const [lastSaved, setLastSaved] = useState("");
   const [generationIssue, setGenerationIssue] = useState("");
+  const [generationInsights, setGenerationInsights] = useState<GenerationInsight[]>([]);
   const [generationAttempt, setGenerationAttempt] = useState(0);
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(
     null,
@@ -1767,12 +1841,23 @@ export default function Home() {
     if (!next.length) {
       const issue = generationFailureMessage();
       setGenerationIssue(issue);
+      setGenerationInsights([]);
       flash(issue);
       return;
     }
     setGenerationIssue("");
     setLineup(next);
     setGenerationAttempt(attempt);
+    setGenerationInsights(
+      explainGeneratedLineup(
+        next,
+        selectedPlayers,
+        playerRules,
+        rules,
+        courtTypes,
+        locale,
+      ),
+    );
     setEditing(false);
     setSelected(null);
     flash(
@@ -3096,6 +3181,23 @@ export default function Home() {
                     : "Lineup not generated"}
                 </strong>
                 <span>{generationIssue}</span>
+              </div>
+            )}
+            {generationInsights.length > 0 && (
+              <div className="generation-explanation">
+                <strong>{locale === "fr" ? "Explication de la génération" : "Generation explanation"}</strong>
+                <span>
+                  {locale === "fr"
+                    ? "Voici les règles appliquées et le résultat obtenu pour cet alignement."
+                    : "These are the rules applied and the result achieved for this lineup."}
+                </span>
+                <ul>
+                  {generationInsights.map((insight, index) => (
+                    <li key={`${index}-${insight.text}`} className={insight.ok ? "ok" : "attention"}>
+                      {insight.text}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
             <div
