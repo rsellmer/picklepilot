@@ -2132,6 +2132,21 @@ td {
   background: #fff2df;
   color: #8d521c;
 }
+.generation-explanation {
+  margin: 0 0 10px;
+  padding: 13px 15px;
+  border: 1px solid #cce6dc;
+  border-radius: 10px;
+  background: #f4fbf7;
+  color: #245f50;
+  font-size: 10px;
+}
+.generation-explanation strong,
+.generation-explanation > span { display: block; }
+.generation-explanation strong { font-size: 12px; margin-bottom: 3px; }
+.generation-explanation > span { color: #5b7d73; }
+.generation-explanation ul { margin: 9px 0 0; padding-left: 18px; display: grid; gap: 4px; }
+.generation-explanation li.attention { color: #a35b1c; }
 .full-lineup td {
   padding: 11px 14px;
 }
