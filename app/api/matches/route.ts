@@ -2,7 +2,6 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
 import {
   matches,
-  playerRules,
   players,
   seasons,
   teamSettings,
@@ -89,7 +88,6 @@ async function lineupError(
   const genders = new Map(
     selected.map((player) => [player.name, player.gender]),
   );
-  const partnerCounts = new Map<string, number>();
   const fallback = [
     "open",
     "open",
@@ -147,8 +145,6 @@ async function lineupError(
       )
         return "Invalid lineup players";
       const [a, b] = pair.map((name: string) => genders.get(name));
-      const pairKey = [...pair].sort().join("|");
-      partnerCounts.set(pairKey, (partnerCounts.get(pairKey) ?? 0) + 1);
       const courtType = courtTypes[(round.round - 1) * 3 + court];
       if (courtType === "women" && (a !== "W" || b !== "W"))
         return `Round ${round.round}, court ${court + 1}: women's doubles required`;
@@ -158,21 +154,9 @@ async function lineupError(
         return `Round ${round.round}, court ${court + 1}: mixed doubles required`;
     }
   }
-  const configuredRules = await db
-    .select()
-    .from(playerRules)
-    .where(eq(playerRules.teamId, teamId));
-  const namesById = new Map(teamPlayers.map((player) => [player.id, player.name]));
-  for (const rule of configuredRules) {
-    const a = namesById.get(rule.playerAId);
-    const b = namesById.get(rule.playerBId);
-    if (!a || !b) continue;
-    const count = partnerCounts.get([a, b].sort().join("|")) ?? 0;
-    if (rule.ruleType === "Avoid" && count > 0)
-      return `${a} and ${b} should not play together`;
-    if (rule.ruleType === "Required" && count < rule.minimumGames)
-      return `${a} and ${b} should play together at least ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}`;
-  }
+  // Player pair rules are optimisation preferences, not competition rules.
+  // They can inform the captain, but never prevent saving an otherwise valid
+  // lineup (gender and court-format rules above remain mandatory).
   return null;
 }
 
