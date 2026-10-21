@@ -699,6 +699,7 @@ export default function Home() {
   const [ruleType, setRuleType] = useState<"Avoid" | "Required">("Avoid");
   const [ruleMinimum, setRuleMinimum] = useState(1);
   const [lastSaved, setLastSaved] = useState("");
+  const [generationIssue, setGenerationIssue] = useState("");
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(
     null,
   );
@@ -888,6 +889,19 @@ export default function Home() {
             ? "Les terrains Femmes exigent au moins deux femmes dans la sélection."
             : "Women's courts require at least two women in the selection."
           : null;
+  const generationFailureMessage = () => {
+    if (rules.blockWomenPairs && courtTypes.includes("women"))
+      return locale === "fr"
+        ? "Conflit de règles : l’option « Bloquer deux femmes jouant ensemble » est active alors que le format contient des terrains « Femmes ». Désactivez cette option ou modifiez le format des terrains."
+        : "Rule conflict: “Block two women playing together” is enabled while the format contains women's courts. Disable this option or change the court format.";
+    if (playerRules.length)
+      return locale === "fr"
+        ? "Les préférences entre joueurs ne peuvent pas toutes être respectées avec cette sélection et ce format. Modifiez les préférences ou sélectionnez d’autres joueurs."
+        : "The player preferences cannot all be met with this selection and format. Adjust the preferences or select different players.";
+    return locale === "fr"
+      ? "La combinaison des terrains Mixte/Femmes et des joueurs sélectionnés ne permet pas de créer un alignement valide."
+      : "The combination of mixed/women's courts and selected players cannot produce a valid lineup.";
+  };
   const activeSeason =
     seasons.find((season) => season.status === "Active") ?? null;
   const seasonMatches = useMemo(
@@ -1441,6 +1455,7 @@ export default function Home() {
 
   function generate() {
     if (generationBlocker) {
+      setGenerationIssue(generationBlocker);
       flash(generationBlocker);
       return;
     }
@@ -1452,13 +1467,12 @@ export default function Home() {
       courtTypes,
     );
     if (!next.length) {
-      flash(
-        locale === "fr"
-          ? "Aucun alignement valide n’a pu être généré avec cette sélection et cette configuration. Vérifiez les terrains Mixte/Femmes et les préférences des joueurs."
-          : "No valid lineup can be generated with this selection and configuration. Check the mixed/women's courts and player preferences.",
-      );
+      const issue = generationFailureMessage();
+      setGenerationIssue(issue);
+      flash(issue);
       return;
     }
+    setGenerationIssue("");
     setLineup(next);
     setEditing(false);
     setSelected(null);
@@ -2101,12 +2115,22 @@ export default function Home() {
     setAvailable(match.playerIds);
     if (match.lineup?.length === 8) {
       setLineup(match.lineup);
+      setGenerationIssue("");
     } else if (match.playerIds.length === 8) {
       const roster = match.playerIds
         .map((id) => players.find((player) => player.id === id))
         .filter(Boolean) as Player[];
-      if (roster.length === 8)
-        setLineup(buildLineup(roster, matches, playerRules, rules, courtTypes));
+      if (roster.length === 8) {
+        const generated = buildLineup(
+          roster,
+          matches,
+          playerRules,
+          rules,
+          courtTypes,
+        );
+        setLineup(generated);
+        setGenerationIssue(generated.length ? "" : generationFailureMessage());
+      }
     }
     setPage("builder");
   }
@@ -2755,6 +2779,16 @@ export default function Home() {
                 </button>
               </div>
             </div>
+            {generationIssue && (
+              <div className="validation warning">
+                <strong>
+                  {locale === "fr"
+                    ? "Alignement non généré"
+                    : "Lineup not generated"}
+                </strong>
+                <span>{generationIssue}</span>
+              </div>
+            )}
             <div
               className={
                 validation.blocking.length
@@ -2785,13 +2819,15 @@ export default function Home() {
                 </span>
               </div>
             )}
-            <LineupTable
-              lineup={lineup}
-              courtTypes={courtTypes}
-              editing={editing}
-              selected={selected}
-              onSwap={swapPlayer}
-            />
+            {lineup.length > 0 && (
+              <LineupTable
+                lineup={lineup}
+                courtTypes={courtTypes}
+                editing={editing}
+                selected={selected}
+                onSwap={swapPlayer}
+              />
+            )}
             <div className="builder-footer">
               <span>
                 {validation.blocking.length
