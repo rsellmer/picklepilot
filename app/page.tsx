@@ -319,6 +319,19 @@ function buildPreferenceLineup(
     const stat = historyStats.get([roster[a].name, roster[b].name].sort().join("|"));
     return stat ? Math.max(0, Math.min(100, 50 + (stat.performance / (stat.played + 4)) * 100)) : 50;
   };
+  const optionPriority = (option: NumericRound, round: number) =>
+    option.courts.reduce((score, [a, b], court) => {
+      const key = [a, b].sort((x, y) => x - y).join("|");
+      const type = courtTypeAt(courtTypes, round + 1, court);
+      const priority = (playerRuleMap.get(key) ?? []).reduce(
+        (total, rule) =>
+          (!rule.courtType || rule.courtType === "any" || rule.courtType === type)
+            ? total + (rule.ruleType === "Required" ? 10_000 : -10_000)
+            : total,
+        0,
+      );
+      return score + priority + pairPerformance(a, b);
+    }, 0);
   const optionsForRound = (round: number): NumericRound[] => {
     const options: NumericRound[] = [];
     const used = Array(8).fill(false);
@@ -349,13 +362,31 @@ function buildPreferenceLineup(
   };
   const roundOptions = Array.from({ length: 8 }, (_, round) => {
     const options = optionsForRound(round);
+    // There are 2,520 mathematically valid arrangements per round. Keeping
+    // all of them for every partial lineup made the builder sluggish on a
+    // phone. Retain the strongest alternatives for each possible rest pair:
+    // this preserves every rest pattern, required pair opportunities and a
+    // variety of alternatives while reducing the search dramatically.
+    const byRest = new Map<string, NumericRound[]>();
+    options.forEach((option) => {
+      const key = option.rest.join("|");
+      byRest.set(key, [...(byRest.get(key) ?? []), option]);
+    });
+    const focused = [...byRest.values()].flatMap((group) => {
+      group.sort((a, b) => optionPriority(b, round) - optionPriority(a, round));
+      const offset = variation
+        ? (variation * 7 + round * 3) % Math.min(group.length, 16)
+        : 0;
+      const rotated = [...group.slice(offset), ...group.slice(0, offset)];
+      return rotated.slice(0, 16);
+    });
     // A new generation intentionally explores the equally-ranked alternatives
     // in a different order. It never relaxes a rule to do so.
     if (variation) {
-      const offset = (variation * 97 + round * 31) % Math.max(options.length, 1);
-      return [...options.slice(offset), ...options.slice(0, offset)];
+      const offset = (variation * 97 + round * 31) % Math.max(focused.length, 1);
+      return [...focused.slice(offset), ...focused.slice(0, offset)];
     }
-    return options;
+    return focused;
   });
   if (roundOptions.some((options) => !options.length)) return null;
   type State = {
@@ -445,10 +476,10 @@ function buildPreferenceLineup(
         .map((rule) => Math.min(rule.minimumGames, state.ruleCounts.get(rule.id) ?? 0))
         .join("|");
       const kept = perProgress.get(progress) ?? 0;
-      if (kept >= 180) return false;
+      if (kept >= 45) return false;
       perProgress.set(progress, kept + 1);
       return true;
-    }).slice(0, 1_440);
+    }).slice(0, 360);
     if (!beam.length) return null;
   }
   const complete = beam.filter((state) => state.rests.every((count) => count === 2));
