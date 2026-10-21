@@ -275,6 +275,7 @@ type NumericRound = { courts: number[][]; rest: number[] };
 // (including a man + woman) and still keeps six games / two rests per player.
 function buildPreferenceLineup(
   roster: Player[],
+  history: Match[],
   playerRules: PlayerRule[],
   rules: RuleSettings,
   courtTypes: CourtType[],
@@ -294,6 +295,28 @@ function buildPreferenceLineup(
     if (type === "women") return left === "W" && right === "W";
     if (type === "mixed") return left !== right;
     return !(rules.blockWomenPairs && left === "W" && right === "W");
+  };
+  // Results are a tie-breaker, never a reason to ignore a captain's explicit
+  // player rule.  A pair that has over-performed against strong opposition is
+  // preferred only after the requested combinations remain achievable.
+  const historyStats = new Map<string, { played: number; performance: number }>();
+  history.forEach((match) =>
+    match.lineup?.forEach((round) =>
+      round.courts.forEach((pair, courtIndex) => {
+        const result = match.results?.[`${round.round}-${courtIndex + 1}`];
+        if (!result) return;
+        const key = [...pair].sort().join("|");
+        const expected = match.opponentStrength === "Stronger" ? 0.35 : match.opponentStrength === "Weaker" ? 0.65 : 0.5;
+        const stat = historyStats.get(key) ?? { played: 0, performance: 0 };
+        stat.played++;
+        stat.performance += (result === "W" ? 1 : 0) - expected;
+        historyStats.set(key, stat);
+      }),
+    ),
+  );
+  const pairPerformance = (a: number, b: number) => {
+    const stat = historyStats.get([roster[a].name, roster[b].name].sort().join("|"));
+    return stat ? Math.max(0, Math.min(100, 50 + (stat.performance / (stat.played + 4)) * 100)) : 50;
   };
   const optionsForRound = (round: number): NumericRound[] => {
     const options: NumericRound[] = [];
@@ -371,6 +394,7 @@ function buildPreferenceLineup(
           const count = (pairCounts.get(key) ?? 0) + 1;
           pairCounts.set(key, count);
           currentPairs.add(key);
+          score += pairPerformance(a, b);
           if (rules.avoidConsecutivePartners && state.previousPairs.has(key))
             score -= 250;
           if (rules.preferMaxTwo && count > 2) score -= 120;
@@ -401,13 +425,38 @@ function buildPreferenceLineup(
         });
       }
     }
-    // Keep a diverse but bounded set of the strongest candidates. With only
-    // eight players this remains immediate on desktop and mobile.
+    // Do not let an early, locally-good partial lineup discard a different
+    // mix of requested pair counts.  That was the reason a feasible 3+2
+    // request could be lost before the final round. Keep strong candidates
+    // for every request-progress signature, then cap the global beam.
     next.sort((a, b) => b.score - a.score);
-    beam = next.slice(0, 320);
+    const perProgress = new Map<string, number>();
+    beam = next.filter((state) => {
+      const progress = playerRules
+        .filter((rule) => rule.ruleType === "Required")
+        .map((rule) => Math.min(rule.minimumGames, state.ruleCounts.get(rule.id) ?? 0))
+        .join("|");
+      const kept = perProgress.get(progress) ?? 0;
+      if (kept >= 180) return false;
+      perProgress.set(progress, kept + 1);
+      return true;
+    }).slice(0, 1_440);
     if (!beam.length) return null;
   }
-  const best = beam.find((state) => state.rests.every((count) => count === 2));
+  const complete = beam.filter((state) => state.rests.every((count) => count === 2));
+  // Required preferences are the first sort key.  Thus, if their requested
+  // counts can coexist with the competition rules, they win over all normal
+  // optimisation preferences and historical performance.
+  complete.sort((a, b) => {
+    const unmet = (state: State) => playerRules
+      .filter((rule) => rule.ruleType === "Required")
+      .reduce((total, rule) => total + Math.max(0, rule.minimumGames - (state.ruleCounts.get(rule.id) ?? 0)), 0);
+    const avoided = (state: State) => playerRules
+      .filter((rule) => rule.ruleType === "Avoid")
+      .reduce((total, rule) => total + (state.ruleCounts.get(rule.id) ?? 0), 0);
+    return unmet(a) - unmet(b) || avoided(a) - avoided(b) || b.score - a.score;
+  });
+  const best = complete[0];
   if (!best) return null;
   return best.rounds.map((round, index) => ({
     round: index + 1,
@@ -433,6 +482,7 @@ function buildLineup(
     return [];
   const preferenceLineup = buildPreferenceLineup(
     roster,
+    history,
     playerRules,
     rules,
     courtTypes,
