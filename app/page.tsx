@@ -1087,6 +1087,14 @@ export default function Home() {
   }, [seasonMatches]);
 
   const validation = useMemo(() => {
+    // An empty or partial lineup is not a player-rest violation. Previously
+    // it made the UI report eight misleading "rests 0 times" errors, hiding
+    // the actual generation issue shown above the table.
+    if (lineup.length !== 8)
+      return {
+        blocking: [],
+        warnings: [],
+      };
     const restCount: Record<string, number> = Object.fromEntries(
       selectedPlayers.map((p) => [p.name, 0]),
     );
@@ -2168,6 +2176,15 @@ export default function Home() {
       setPage("matches");
       return;
     }
+    if (lineup.length !== 8) {
+      const message =
+        locale === "fr"
+          ? "Générez un alignement complet avant de l’enregistrer."
+          : "Generate a complete lineup before saving it.";
+      setGenerationIssue(message);
+      flash(message);
+      return;
+    }
     try {
       const response = await fetch("/api/matches", {
         method: "PUT",
@@ -2766,6 +2783,7 @@ export default function Home() {
                   className="primary-btn"
                   disabled={
                     !activeMatch ||
+                    lineup.length !== 8 ||
                     validation.blocking.length > 0 ||
                     available.length !== 8 ||
                     !mixedReady ||
