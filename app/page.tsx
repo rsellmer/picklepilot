@@ -364,7 +364,8 @@ function buildLineup(
         b = roster.find((player) => player.id === rule.playerBId)?.name;
       if (!a || !b) return;
       const count = counts[[a, b].sort().join("|")] ?? 0;
-      if (rule.ruleType === "Avoid") score -= count * 350;
+      if (rule.ruleType === "Avoid")
+        score -= count * 10_000;
       else if (count < rule.minimumGames)
         // A requested partner combination must outweigh historical ranking
         // and the other optimisation preferences whenever it is feasible.
@@ -1132,9 +1133,9 @@ export default function Home() {
       if (!a || !b) return;
       const count = partners[[a, b].sort().join("|")] || 0;
       if (rule.ruleType === "Avoid" && count > 0)
-        warnings.push(`${a} and ${b} should not play together`);
+        blocking.push(`${a} and ${b} should not play together`);
       if (rule.ruleType === "Required" && count < rule.minimumGames)
-        warnings.push(
+        blocking.push(
           `${a} and ${b} should play together at least ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}`,
         );
     });
@@ -2715,6 +2716,21 @@ export default function Home() {
                 >
                   Generate again ✦
                 </button>
+                <button
+                  className="primary-btn"
+                  disabled={
+                    !activeMatch ||
+                    validation.blocking.length > 0 ||
+                    available.length !== 8 ||
+                    !mixedReady ||
+                    !womenReady
+                  }
+                  onClick={saveLineup}
+                >
+                  {activeMatch?.lineup?.length === 8
+                    ? "Save changes"
+                    : "Save lineup"} →
+                </button>
               </div>
             </div>
             <div
@@ -2784,6 +2800,7 @@ export default function Home() {
                 <button
                   className="primary-btn"
                   disabled={
+                    !activeMatch ||
                     validation.blocking.length > 0 ||
                     available.length !== 8 ||
                     !mixedReady ||
