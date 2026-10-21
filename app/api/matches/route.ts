@@ -1,6 +1,12 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "../../../db";
-import { matches, players, seasons, teamSettings } from "../../../db/schema";
+import {
+  matches,
+  playerRules,
+  players,
+  seasons,
+  teamSettings,
+} from "../../../db/schema";
 import { requireUser } from "../auth/security";
 
 type MatchInput = {
@@ -83,6 +89,7 @@ async function lineupError(
   const genders = new Map(
     selected.map((player) => [player.name, player.gender]),
   );
+  const partnerCounts = new Map<string, number>();
   const fallback = [
     "open",
     "open",
@@ -140,6 +147,8 @@ async function lineupError(
       )
         return "Invalid lineup players";
       const [a, b] = pair.map((name: string) => genders.get(name));
+      const pairKey = [...pair].sort().join("|");
+      partnerCounts.set(pairKey, (partnerCounts.get(pairKey) ?? 0) + 1);
       const courtType = courtTypes[(round.round - 1) * 3 + court];
       if (courtType === "women" && (a !== "W" || b !== "W"))
         return `Round ${round.round}, court ${court + 1}: women's doubles required`;
@@ -148,6 +157,21 @@ async function lineupError(
       if (courtType === "mixed" && a === b)
         return `Round ${round.round}, court ${court + 1}: mixed doubles required`;
     }
+  }
+  const configuredRules = await db
+    .select()
+    .from(playerRules)
+    .where(eq(playerRules.teamId, teamId));
+  const namesById = new Map(teamPlayers.map((player) => [player.id, player.name]));
+  for (const rule of configuredRules) {
+    const a = namesById.get(rule.playerAId);
+    const b = namesById.get(rule.playerBId);
+    if (!a || !b) continue;
+    const count = partnerCounts.get([a, b].sort().join("|")) ?? 0;
+    if (rule.ruleType === "Avoid" && count > 0)
+      return `${a} and ${b} should not play together`;
+    if (rule.ruleType === "Required" && count < rule.minimumGames)
+      return `${a} and ${b} should play together at least ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}`;
   }
   return null;
 }
