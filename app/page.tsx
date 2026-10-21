@@ -874,6 +874,20 @@ export default function Home() {
   const womenReady =
     selectedPlayers.filter((p) => p.gender === "W").length >=
     (courtTypes.includes("women") ? 2 : 0);
+  const generationBlocker =
+    available.length !== 8
+      ? locale === "fr"
+        ? "Sélectionnez exactement 8 joueurs pour générer l’alignement."
+        : "Select exactly 8 players to generate the lineup."
+      : !mixedReady
+        ? locale === "fr"
+          ? "Les terrains mixtes exigent au moins une femme et un homme dans la sélection."
+          : "Mixed courts require at least one woman and one man in the selection."
+        : !womenReady
+          ? locale === "fr"
+            ? "Les terrains Femmes exigent au moins deux femmes dans la sélection."
+            : "Women's courts require at least two women in the selection."
+          : null;
   const activeSeason =
     seasons.find((season) => season.status === "Active") ?? null;
   const seasonMatches = useMemo(
@@ -1426,7 +1440,10 @@ export default function Home() {
   }
 
   function generate() {
-    if (selectedPlayers.length !== 8 || !mixedReady || !womenReady) return;
+    if (generationBlocker) {
+      flash(generationBlocker);
+      return;
+    }
     const next = buildLineup(
       selectedPlayers,
       matches,
@@ -1436,7 +1453,9 @@ export default function Home() {
     );
     if (!next.length) {
       flash(
-        "No valid lineup for this roster. Check the required mixed and women's courts.",
+        locale === "fr"
+          ? "Aucun alignement valide n’a pu être généré avec cette sélection et cette configuration. Vérifiez les terrains Mixte/Femmes et les préférences des joueurs."
+          : "No valid lineup can be generated with this selection and configuration. Check the mixed/women's courts and player preferences.",
       );
       return;
     }
@@ -2661,13 +2680,16 @@ export default function Home() {
               </div>
               {available.length === 8 && !mixedReady && (
                 <p className="mixed-roster-error">
-                  Select at least 1 woman and 1 man to generate the required
-                  mixed courts.
+                  {locale === "fr"
+                    ? "Sélectionnez au moins une femme et un homme pour les terrains mixtes obligatoires."
+                    : "Select at least 1 woman and 1 man to generate the required mixed courts."}
                 </p>
               )}
               {available.length === 8 && !womenReady && (
                 <p className="mixed-roster-error">
-                  Select at least 2 women for the required women's courts.
+                  {locale === "fr"
+                    ? "Sélectionnez au moins deux femmes pour les terrains Femmes obligatoires."
+                    : "Select at least 2 women for the required women's courts."}
                 </p>
               )}
               <button
