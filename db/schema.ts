@@ -131,6 +131,9 @@ export const playerRules = sqliteTable("player_rules", {
   playerBId: integer("player_b_id").notNull(),
   ruleType: text("rule_type", { enum: ["Avoid", "Required"] }).notNull(),
   minimumGames: integer("minimum_games").notNull().default(1),
+  courtType: text("court_type", { enum: ["any", "mixed", "women"] })
+    .notNull()
+    .default("any"),
   teamId: integer("team_id").notNull().default(1),
   createdAt: text("created_at")
     .notNull()
