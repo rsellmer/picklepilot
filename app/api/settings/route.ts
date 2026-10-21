@@ -19,6 +19,7 @@ export async function GET(request: Request) {
         category: "Performance",
         blockWomenPairs: true,
         lineupCourtTypes: undefined,
+        lineupRules: undefined,
         publicSlug: "team",
       },
     });
@@ -42,6 +43,7 @@ export async function PUT(request: Request) {
       category?: "Performance" | "Development" | "Senior";
       blockWomenPairs?: boolean;
       lineupCourtTypes?: unknown;
+      lineupRules?: unknown;
     };
     const teamName = input.teamName?.trim(),
       captainName = input.captainName?.trim(),
@@ -60,6 +62,22 @@ export async function PUT(request: Request) {
       )
         ? JSON.stringify(input.lineupCourtTypes)
         : undefined;
+    const lineupRules =
+      input.lineupRules &&
+      typeof input.lineupRules === "object" &&
+      [
+        "avoidConsecutivePartners",
+        "preferMaxTwo",
+        "blockAboveThree",
+        "avoidBackToBackRest",
+        "avoidLongStreaks",
+      ].every(
+        (key) =>
+          typeof (input.lineupRules as Record<string, unknown>)[key] ===
+          "boolean",
+      )
+        ? JSON.stringify(input.lineupRules)
+        : undefined;
     const db = getDb();
     const [current] = await db
       .select({ publicSlug: teamSettings.publicSlug })
@@ -75,6 +93,7 @@ export async function PUT(request: Request) {
         category,
         blockWomenPairs: blockWomenPairs ?? true,
         lineupCourtTypes: lineupCourtTypes ?? undefined,
+        lineupRules: lineupRules ?? undefined,
         publicSlug,
       })
       .onConflictDoUpdate({
@@ -85,6 +104,7 @@ export async function PUT(request: Request) {
           category,
           ...(blockWomenPairs === undefined ? {} : { blockWomenPairs }),
           ...(lineupCourtTypes === undefined ? {} : { lineupCourtTypes }),
+          ...(lineupRules === undefined ? {} : { lineupRules }),
           updatedAt: new Date().toISOString(),
         },
       });
@@ -93,6 +113,7 @@ export async function PUT(request: Request) {
         publicSlug: teamSettings.publicSlug,
         blockWomenPairs: teamSettings.blockWomenPairs,
         lineupCourtTypes: teamSettings.lineupCourtTypes,
+        lineupRules: teamSettings.lineupRules,
       })
       .from(teamSettings)
       .where(eq(teamSettings.id, auth.user!.teamId));
@@ -104,6 +125,7 @@ export async function PUT(request: Request) {
         category,
         blockWomenPairs: settings?.blockWomenPairs ?? true,
         lineupCourtTypes: settings?.lineupCourtTypes,
+        lineupRules: settings?.lineupRules,
         publicSlug: settings?.publicSlug ?? "team",
       },
     });
