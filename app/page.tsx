@@ -279,6 +279,7 @@ function buildPreferenceLineup(
   playerRules: PlayerRule[],
   rules: RuleSettings,
   courtTypes: CourtType[],
+  variation = 0,
 ): Round[] | null {
   if (!playerRules.length) return null;
   const playerRuleMap = new Map<string, PlayerRule[]>();
@@ -346,9 +347,16 @@ function buildPreferenceLineup(
     addCourt(0);
     return options;
   };
-  const roundOptions = Array.from({ length: 8 }, (_, round) =>
-    optionsForRound(round),
-  );
+  const roundOptions = Array.from({ length: 8 }, (_, round) => {
+    const options = optionsForRound(round);
+    // A new generation intentionally explores the equally-ranked alternatives
+    // in a different order. It never relaxes a rule to do so.
+    if (variation) {
+      const offset = (variation * 97 + round * 31) % Math.max(options.length, 1);
+      return [...options.slice(offset), ...options.slice(0, offset)];
+    }
+    return options;
+  });
   if (roundOptions.some((options) => !options.length)) return null;
   type State = {
     rounds: NumericRound[];
@@ -470,6 +478,7 @@ function buildLineup(
   playerRules: PlayerRule[],
   rules: RuleSettings,
   courtTypes: CourtType[],
+  variation = 0,
 ): Round[] {
   const neededWomen = courtTypes.includes("women") ? 2 : 0;
   if (
@@ -486,6 +495,7 @@ function buildLineup(
     playerRules,
     rules,
     courtTypes,
+    variation,
   );
   if (preferenceLineup) return preferenceLineup;
   const fourWomen =
@@ -906,6 +916,7 @@ export default function Home() {
   const [ruleCourtType, setRuleCourtType] = useState<"any" | "mixed" | "women">("any");
   const [lastSaved, setLastSaved] = useState("");
   const [generationIssue, setGenerationIssue] = useState("");
+  const [generationAttempt, setGenerationAttempt] = useState(0);
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(
     null,
   );
@@ -1744,12 +1755,14 @@ export default function Home() {
       flash(generationBlocker);
       return;
     }
+    const attempt = lineup.length ? generationAttempt + 1 : 0;
     const next = buildLineup(
       selectedPlayers,
       matches,
       playerRules,
       rules,
       courtTypes,
+      attempt,
     );
     if (!next.length) {
       const issue = generationFailureMessage();
@@ -1759,6 +1772,7 @@ export default function Home() {
     }
     setGenerationIssue("");
     setLineup(next);
+    setGenerationAttempt(attempt);
     setEditing(false);
     setSelected(null);
     flash(
