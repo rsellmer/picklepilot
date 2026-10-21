@@ -420,6 +420,14 @@ function buildPreferenceLineup(
         )
           continue;
         if (option.rest.some((player) => state.rests[player] >= 2)) continue;
+        if (
+          rules.blockAboveThree &&
+          option.courts.some(([a, b]) => {
+            const key = [a, b].sort((x, y) => x - y).join("|");
+            return (state.pairCounts.get(key) ?? 0) >= 3;
+          })
+        )
+          continue;
         const rests = state.rests.map((count, player) =>
           count + (option.rest.includes(player) ? 1 : 0),
         );
@@ -437,7 +445,6 @@ function buildPreferenceLineup(
           if (rules.avoidConsecutivePartners && state.previousPairs.has(key))
             score -= 250;
           if (rules.preferMaxTwo && count > 2) score -= 120;
-          if (rules.blockAboveThree && count > 3) score -= 2_000;
           const courtType = courtTypeAt(courtTypes, round + 1, court);
           (playerRuleMap.get(key) ?? [])
             .filter(
@@ -601,10 +608,10 @@ function buildLineup(
       }
       previous = current;
     }
-    Object.values(counts).forEach((count) => {
+    for (const count of Object.values(counts)) {
       if (rules.preferMaxTwo && count > 2) score -= (count - 2) * 70;
-      if (rules.blockAboveThree && count > 3) score -= (count - 3) * 250;
-    });
+      if (rules.blockAboveThree && count > 3) return -Infinity;
+    }
     playerRules.forEach((rule) => {
       const a = roster.find((player) => player.id === rule.playerAId)?.name,
         b = roster.find((player) => player.id === rule.playerBId)?.name;
@@ -1521,7 +1528,7 @@ export default function Home() {
     });
     Object.entries(partners).forEach(([pair, c]) => {
       if (rules.blockAboveThree && c > 3)
-        warnings.push(`${pair.replace("|", " + ")} play together ${c} times`);
+        blocking.push(`${pair.replace("|", " + ")} play together ${c} times (maximum 3)`);
     });
     playerRules.forEach((rule) => {
       const a = players.find((player) => player.id === rule.playerAId)?.name,
