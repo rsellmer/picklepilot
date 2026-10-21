@@ -41,7 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Build Worker
-        run: npm run build
+        run: |
+          rm -rf dist
+          npm run build
       - name: Apply D1 migrations
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
