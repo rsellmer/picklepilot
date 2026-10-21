@@ -361,8 +361,10 @@ function buildPreferenceLineup(
     addCourt(0);
     return options;
   };
-  const roundOptions = Array.from({ length: 8 }, (_, round) => {
-    const options = optionsForRound(round);
+  const allRoundOptions = Array.from({ length: 8 }, (_, round) =>
+    optionsForRound(round),
+  );
+  const roundOptions = allRoundOptions.map((options, round) => {
     // There are 2,520 mathematically valid arrangements per round. Keeping
     // all of them for every partial lineup made the builder sluggish on a
     // phone. Retain the strongest alternatives for each possible rest pair:
@@ -401,7 +403,7 @@ function buildPreferenceLineup(
     }
     return focused;
   });
-  if (roundOptions.some((options) => !options.length)) return null;
+  if (allRoundOptions.some((options) => !options.length)) return null;
   type State = {
     rounds: NumericRound[];
     rests: number[];
@@ -410,6 +412,59 @@ function buildPreferenceLineup(
     previousRest: Set<number>;
     previousPairs: Set<string>;
     score: number;
+  };
+  const asLineup = (rounds: NumericRound[]) =>
+    rounds.map((round, index) => ({
+      round: index + 1,
+      courts: round.courts.map((pair) => pair.map((player) => roster[player].name)),
+      rest: round.rest.map((player) => roster[player].name),
+    }));
+  // Safety net: the fast beam above makes normal generation immediate. If it
+  // prunes every path in an unusual but valid roster (e.g. one woman and seven
+  // men), do a bounded depth-first feasibility search over the full options.
+  // It never relaxes a hard rule; it simply proves a valid lineup exists.
+  const findFeasibleLineup = (): Round[] | null => {
+    let visits = 0;
+    const search = (
+      round: number,
+      rests: number[],
+      pairCounts: Map<string, number>,
+      previousRest: Set<number>,
+      built: NumericRound[],
+    ): NumericRound[] | null => {
+      if (++visits > 80_000) return null;
+      if (round === 8)
+        return rests.every((count) => count === 2) ? built : null;
+      const remainingRounds = 7 - round;
+      const candidates = allRoundOptions[round]
+        .filter((option) => {
+          if (rules.avoidBackToBackRest && option.rest.some((player) => previousRest.has(player))) return false;
+          if (option.rest.some((player) => rests[player] >= 2)) return false;
+          const nextRests = rests.map((count, player) => count + (option.rest.includes(player) ? 1 : 0));
+          if (nextRests.some((count) => 2 - count > remainingRounds)) return false;
+          return !rules.blockAboveThree || !option.courts.some(([a, b]) =>
+            (pairCounts.get([a, b].sort((x, y) => x - y).join("|")) ?? 0) >= 3,
+          );
+        })
+        .sort((left, right) => {
+          const cost = (option: NumericRound) => option.courts.reduce((total, [a, b]) =>
+            total + (pairCounts.get([a, b].sort((x, y) => x - y).join("|")) ?? 0), 0);
+          return cost(left) - cost(right);
+        });
+      for (const option of candidates.slice(0, 180)) {
+        const nextCounts = new Map(pairCounts);
+        option.courts.forEach(([a, b]) => {
+          const key = [a, b].sort((x, y) => x - y).join("|");
+          nextCounts.set(key, (nextCounts.get(key) ?? 0) + 1);
+        });
+        const nextRests = rests.map((count, player) => count + (option.rest.includes(player) ? 1 : 0));
+        const found = search(round + 1, nextRests, nextCounts, new Set(option.rest), [...built, option]);
+        if (found) return found;
+      }
+      return null;
+    };
+    const found = search(0, Array(8).fill(0), new Map(), new Set(), []);
+    return found ? asLineup(found) : null;
   };
   let beam: State[] = [
     {
@@ -503,7 +558,7 @@ function buildPreferenceLineup(
       perProgress.set(progress, kept + 1);
       return true;
     }).slice(0, beamLimit);
-    if (!beam.length) return null;
+    if (!beam.length) return findFeasibleLineup();
   }
   const complete = beam.filter((state) => state.rests.every((count) => count === 2));
   // Required preferences are the first sort key.  Thus, if their requested
@@ -519,12 +574,8 @@ function buildPreferenceLineup(
     return unmet(a) - unmet(b) || avoided(a) - avoided(b) || b.score - a.score;
   });
   const best = complete[0];
-  if (!best) return null;
-  return best.rounds.map((round, index) => ({
-    round: index + 1,
-    courts: round.courts.map((pair) => pair.map((player) => roster[player].name)),
-    rest: round.rest.map((player) => roster[player].name),
-  }));
+  if (!best) return findFeasibleLineup();
+  return asLineup(best.rounds);
 }
 function buildLineup(
   roster: Player[],
