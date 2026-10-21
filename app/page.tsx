@@ -255,14 +255,14 @@ const fourWomenTemplate = Array.from({ length: 8 }, (_, round) => {
 // Unlike the standard template, it needs the two women in specific slots so
 // that both can rest twice while every required court stays valid.
 const twoWomenDevelopmentTemplate = [
-  [[0, 4], [5, 6], [1, 7], [2, 3]],
-  [[2, 3], [0, 1], [6, 7], [4, 5]],
-  [[2, 3], [4, 5], [0, 7], [1, 6]],
-  [[2, 3], [1, 4], [5, 6], [0, 7]],
-  [[0, 4], [5, 6], [1, 7], [2, 3]],
-  [[2, 3], [0, 1], [6, 7], [4, 5]],
-  [[2, 3], [4, 5], [0, 7], [1, 6]],
-  [[1, 4], [2, 3], [5, 6], [0, 7]],
+  [[0, 2], [6, 7], [1, 4], [3, 5]],
+  [[3, 4], [0, 1], [5, 7], [2, 6]],
+  [[2, 5], [6, 7], [0, 3], [1, 4]],
+  [[2, 5], [1, 3], [4, 6], [0, 7]],
+  [[0, 2], [6, 7], [1, 4], [3, 5]],
+  [[3, 5], [0, 1], [4, 7], [2, 6]],
+  [[2, 6], [5, 7], [0, 3], [1, 4]],
+  [[1, 3], [2, 6], [4, 5], [0, 7]],
 ];
 const isDevelopmentPattern = (courtTypes: CourtType[]) =>
   courtTypes.length === developmentCourtTypes.length &&
@@ -366,7 +366,9 @@ function buildLineup(
       const count = counts[[a, b].sort().join("|")] ?? 0;
       if (rule.ruleType === "Avoid") score -= count * 350;
       else if (count < rule.minimumGames)
-        score -= (rule.minimumGames - count) * 350;
+        // A requested partner combination must outweigh historical ranking
+        // and the other optimisation preferences whenever it is feasible.
+        score -= (rule.minimumGames - count) * 10_000;
     });
     return score;
   };
