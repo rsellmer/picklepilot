@@ -114,6 +114,11 @@ export const teamSettings = sqliteTable("team_settings", {
     .default(
       '["open","open","open","mixed","open","open","open","open","mixed","open","open","open","mixed","open","open","open","open","open","mixed","open","open","open","open","open"]',
     ),
+  lineupRules: text("lineup_rules")
+    .notNull()
+    .default(
+      '{"avoidConsecutivePartners":true,"preferMaxTwo":true,"blockAboveThree":true,"avoidBackToBackRest":true,"avoidLongStreaks":true}',
+    ),
   publicSlug: text("public_slug").notNull().unique(),
   updatedAt: text("updated_at")
     .notNull()
