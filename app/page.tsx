@@ -93,6 +93,7 @@ type PlayerRule = {
   playerBId: number;
   ruleType: "Avoid" | "Required";
   minimumGames: number;
+  courtType: "any" | "mixed" | "women";
 };
 type AppUser = {
   id: number;
@@ -330,6 +331,7 @@ function buildPreferenceLineup(
     rounds: NumericRound[];
     rests: number[];
     pairCounts: Map<string, number>;
+    ruleCounts: Map<number, number>;
     previousRest: Set<number>;
     previousPairs: Set<string>;
     score: number;
@@ -339,6 +341,7 @@ function buildPreferenceLineup(
       rounds: [],
       rests: Array(8).fill(0),
       pairCounts: new Map(),
+      ruleCounts: new Map(),
       previousRest: new Set(),
       previousPairs: new Set(),
       score: 0,
@@ -349,15 +352,21 @@ function buildPreferenceLineup(
     const next: State[] = [];
     for (const state of beam) {
       for (const option of roundOptions[round]) {
+        if (
+          rules.avoidBackToBackRest &&
+          option.rest.some((player) => state.previousRest.has(player))
+        )
+          continue;
         if (option.rest.some((player) => state.rests[player] >= 2)) continue;
         const rests = state.rests.map((count, player) =>
           count + (option.rest.includes(player) ? 1 : 0),
         );
         if (rests.some((count) => 2 - count > remainingRounds)) continue;
         const pairCounts = new Map(state.pairCounts);
+        const ruleCounts = new Map(state.ruleCounts);
         const currentPairs = new Set<string>();
         let score = state.score;
-        option.courts.forEach(([a, b]) => {
+        option.courts.forEach(([a, b], court) => {
           const key = [a, b].sort((x, y) => x - y).join("|");
           const count = (pairCounts.get(key) ?? 0) + 1;
           pairCounts.set(key, count);
@@ -366,17 +375,26 @@ function buildPreferenceLineup(
             score -= 250;
           if (rules.preferMaxTwo && count > 2) score -= 120;
           if (rules.blockAboveThree && count > 3) score -= 2_000;
-          (playerRuleMap.get(key) ?? []).forEach((rule) => {
+          const courtType = courtTypeAt(courtTypes, round + 1, court);
+          (playerRuleMap.get(key) ?? [])
+            .filter(
+              (rule) =>
+                !rule.courtType ||
+                rule.courtType === "any" ||
+                rule.courtType === courtType,
+            )
+            .forEach((rule) => {
+            const ruleCount = (ruleCounts.get(rule.id) ?? 0) + 1;
+            ruleCounts.set(rule.id, ruleCount);
             if (rule.ruleType === "Avoid") score -= 100_000;
-            else if (count <= rule.minimumGames) score += 30_000;
+            else if (ruleCount <= rule.minimumGames) score += 30_000;
           });
         });
-        if (rules.avoidBackToBackRest && option.rest.some((p) => state.previousRest.has(p)))
-          score -= 500;
         next.push({
           rounds: [...state.rounds, option],
           rests,
           pairCounts,
+          ruleCounts,
           previousRest: new Set(option.rest),
           previousPairs: currentPairs,
           score,
@@ -835,6 +853,7 @@ export default function Home() {
   const [ruleB, setRuleB] = useState<number | "">("");
   const [ruleType, setRuleType] = useState<"Avoid" | "Required">("Avoid");
   const [ruleMinimum, setRuleMinimum] = useState(1);
+  const [ruleCourtType, setRuleCourtType] = useState<"any" | "mixed" | "women">("any");
   const [lastSaved, setLastSaved] = useState("");
   const [generationIssue, setGenerationIssue] = useState("");
   const [availabilityMatch, setAvailabilityMatch] = useState<Match | null>(
@@ -1022,6 +1041,13 @@ export default function Home() {
     setTimeout(() => setNotice(""), 2600);
   };
   const activePlayers = players.filter((p) => p.status === "Active");
+  const rulePlayerA = players.find((player) => player.id === ruleA);
+  const rulePlayerB = players.find((player) => player.id === ruleB);
+  const ruleCanBeMixed =
+    Boolean(rulePlayerA && rulePlayerB) &&
+    rulePlayerA!.gender !== rulePlayerB!.gender;
+  const ruleCanBeWomen =
+    rulePlayerA?.gender === "W" && rulePlayerB?.gender === "W";
   const selectedPlayers = available
     .map((id) => players.find((p) => p.id === id))
     .filter(Boolean) as Player[];
@@ -1256,6 +1282,7 @@ export default function Home() {
       selectedPlayers.map((p) => [p.name, 0]),
     );
     const partners: Record<string, number> = {};
+    const playerRuleCounts: Record<number, number> = {};
     const blocking: string[] = [];
     const warnings: string[] = [];
     lineup.forEach((row, rowIndex) => {
@@ -1294,6 +1321,16 @@ export default function Home() {
           (n) => selectedPlayers.find((p) => p.name === n)?.gender,
         );
         const courtType = courtTypeAt(courtTypes, row.round, courtIndex);
+        playerRules.forEach((rule) => {
+          const a = players.find((player) => player.id === rule.playerAId)?.name;
+          const b = players.find((player) => player.id === rule.playerBId)?.name;
+          const appliesToCourt =
+            !rule.courtType ||
+            rule.courtType === "any" ||
+            rule.courtType === courtType;
+          if (appliesToCourt && a && b && [a, b].sort().join("|") === key)
+            playerRuleCounts[rule.id] = (playerRuleCounts[rule.id] ?? 0) + 1;
+        });
         if (courtType === "women" && (genders[0] !== "W" || genders[1] !== "W"))
           blocking.push(
             `Round ${row.round}, court ${courtIndex + 1}: women's doubles required`,
@@ -1324,7 +1361,7 @@ export default function Home() {
       const a = players.find((player) => player.id === rule.playerAId)?.name,
         b = players.find((player) => player.id === rule.playerBId)?.name;
       if (!a || !b) return;
-      const count = partners[[a, b].sort().join("|")] || 0;
+      const count = playerRuleCounts[rule.id] ?? 0;
       if (rule.ruleType === "Avoid" && count > 0)
         warnings.push(`${a} and ${b} should not play together`);
       if (rule.ruleType === "Required" && count < rule.minimumGames)
@@ -1612,6 +1649,13 @@ export default function Home() {
       flash("Select two different players.");
       return;
     }
+    if (
+      (ruleCourtType === "mixed" && !ruleCanBeMixed) ||
+      (ruleCourtType === "women" && !ruleCanBeWomen)
+    ) {
+      flash("Choose a court type that matches the selected players.");
+      return;
+    }
     const response = await fetch("/api/player-rules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1620,6 +1664,7 @@ export default function Home() {
         playerBId: ruleB,
         ruleType,
         minimumGames: ruleMinimum,
+        courtType: ruleCourtType,
       }),
     });
     if (!response.ok) {
@@ -1630,6 +1675,7 @@ export default function Home() {
     setPlayerRules((current) => [...current, rule]);
     setRuleA("");
     setRuleB("");
+    setRuleCourtType("any");
     flash("Player rule saved.");
   }
   async function removePlayerRule(id: number) {
@@ -3270,6 +3316,19 @@ export default function Home() {
                       </option>
                     ))}
                 </select>
+                <select
+                  aria-label="Court type"
+                  value={ruleCourtType}
+                  onChange={(event) =>
+                    setRuleCourtType(
+                      event.target.value as "any" | "mixed" | "women",
+                    )
+                  }
+                >
+                  <option value="any">Any court</option>
+                  {ruleCanBeMixed && <option value="mixed">Mixed court</option>}
+                  {ruleCanBeWomen && <option value="women">Women’s court</option>}
+                </select>
                 {ruleType === "Required" && (
                   <label>
                     Games together
@@ -3308,8 +3367,8 @@ export default function Home() {
                           </strong>
                           <small>
                             {rule.ruleType === "Avoid"
-                              ? "Should not play together"
-                              : `Should play together ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}`}
+                              ? `Should not play together${rule.courtType && rule.courtType !== "any" ? ` on ${rule.courtType} courts` : ""}`
+                              : `Should play together ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}${rule.courtType && rule.courtType !== "any" ? ` on ${rule.courtType} courts` : ""}`}
                           </small>
                         </span>
                         <button onClick={() => removePlayerRule(rule.id)}>
