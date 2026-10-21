@@ -267,6 +267,22 @@ const twoWomenDevelopmentTemplate = [
 const isDevelopmentPattern = (courtTypes: CourtType[]) =>
   courtTypes.length === developmentCourtTypes.length &&
   courtTypes.every((type, index) => type === developmentCourtTypes[index]);
+const isPerformancePattern = (courtTypes: CourtType[]) =>
+  courtTypes.length === performanceCourtTypes.length &&
+  courtTypes.every((type, index) => type === performanceCourtTypes[index]);
+// The regular Performance rotation never repeats a court pairing three times.
+// This alternate rotation keeps the same six-games/two-rests balance and lets
+// one requested pair play three times when that preference is selected.
+const requiredPairPerformanceTemplate = [
+  [[2, 3], [0, 7], [1, 6], [4, 5]],
+  [[0, 7], [4, 5], [2, 3], [1, 6]],
+  [[0, 3], [4, 6], [1, 7], [2, 5]],
+  [[1, 5], [3, 7], [0, 2], [4, 6]],
+  [[1, 5], [4, 6], [2, 3], [0, 7]],
+  [[1, 4], [6, 7], [0, 5], [2, 3]],
+  [[0, 2], [4, 6], [3, 5], [1, 7]],
+  [[1, 6], [2, 4], [5, 7], [0, 3]],
+];
 function buildLineup(
   roster: Player[],
   history: Match[],
@@ -289,11 +305,20 @@ function buildLineup(
     roster.filter((player) => player.gender === "W").length === 2 &&
     roster.filter((player) => player.gender === "M").length === 6 &&
     isDevelopmentPattern(courtTypes);
+  const twoWomenPerformanceWithRequiredPair =
+    roster.filter((player) => player.gender === "W").length === 2 &&
+    roster.filter((player) => player.gender === "M").length === 6 &&
+    isPerformancePattern(courtTypes) &&
+    playerRules.some(
+      (rule) => rule.ruleType === "Required" && rule.minimumGames >= 3,
+    );
   const schedule = fourWomen
     ? fourWomenTemplate
     : twoWomenDevelopment
       ? twoWomenDevelopmentTemplate
-      : template;
+      : twoWomenPerformanceWithRequiredPair
+        ? requiredPairPerformanceTemplate
+        : template;
   const historyStats = new Map<
     string,
     { played: number; performance: number }
@@ -391,6 +416,8 @@ function buildLineup(
         used[index] ||
         (fourWomen && roster[index].gender !== (ordered.length < 4 ? "W" : "M")) ||
         (twoWomenDevelopment &&
+          roster[index].gender !== (ordered.length < 2 ? "W" : "M")) ||
+        (twoWomenPerformanceWithRequiredPair &&
           roster[index].gender !== (ordered.length < 2 ? "W" : "M"))
       )
         continue;
@@ -1169,9 +1196,9 @@ export default function Home() {
       if (!a || !b) return;
       const count = partners[[a, b].sort().join("|")] || 0;
       if (rule.ruleType === "Avoid" && count > 0)
-        blocking.push(`${a} and ${b} should not play together`);
+        warnings.push(`${a} and ${b} should not play together`);
       if (rule.ruleType === "Required" && count < rule.minimumGames)
-        blocking.push(
+        warnings.push(
           `${a} and ${b} should play together at least ${rule.minimumGames} time${rule.minimumGames === 1 ? "" : "s"}`,
         );
     });
