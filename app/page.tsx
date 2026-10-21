@@ -267,22 +267,136 @@ const twoWomenDevelopmentTemplate = [
 const isDevelopmentPattern = (courtTypes: CourtType[]) =>
   courtTypes.length === developmentCourtTypes.length &&
   courtTypes.every((type, index) => type === developmentCourtTypes[index]);
-const isPerformancePattern = (courtTypes: CourtType[]) =>
-  courtTypes.length === performanceCourtTypes.length &&
-  courtTypes.every((type, index) => type === performanceCourtTypes[index]);
-// The regular Performance rotation never repeats a court pairing three times.
-// This alternate rotation keeps the same six-games/two-rests balance and lets
-// one requested pair play three times when that preference is selected.
-const requiredPairPerformanceTemplate = [
-  [[2, 3], [0, 7], [1, 6], [4, 5]],
-  [[0, 7], [4, 5], [2, 3], [1, 6]],
-  [[0, 3], [4, 6], [1, 7], [2, 5]],
-  [[1, 5], [3, 7], [0, 2], [4, 6]],
-  [[1, 5], [4, 6], [2, 3], [0, 7]],
-  [[1, 4], [6, 7], [0, 5], [2, 3]],
-  [[0, 2], [4, 6], [3, 5], [1, 7]],
-  [[1, 6], [2, 4], [5, 7], [0, 3]],
-];
+type NumericRound = { courts: number[][]; rest: number[] };
+
+// Builds the actual rounds instead of trying to squeeze every request into a
+// single fixed rotation. This lets every captain ask for any eligible pair
+// (including a man + woman) and still keeps six games / two rests per player.
+function buildPreferenceLineup(
+  roster: Player[],
+  playerRules: PlayerRule[],
+  rules: RuleSettings,
+  courtTypes: CourtType[],
+): Round[] | null {
+  if (!playerRules.length) return null;
+  const playerRuleMap = new Map<string, PlayerRule[]>();
+  playerRules.forEach((rule) => {
+    const a = roster.findIndex((player) => player.id === rule.playerAId);
+    const b = roster.findIndex((player) => player.id === rule.playerBId);
+    if (a < 0 || b < 0) return;
+    const key = [a, b].sort((x, y) => x - y).join("|");
+    playerRuleMap.set(key, [...(playerRuleMap.get(key) ?? []), rule]);
+  });
+  const validPair = (a: number, b: number, type: CourtType) => {
+    const left = roster[a].gender,
+      right = roster[b].gender;
+    if (type === "women") return left === "W" && right === "W";
+    if (type === "mixed") return left !== right;
+    return !(rules.blockWomenPairs && left === "W" && right === "W");
+  };
+  const optionsForRound = (round: number): NumericRound[] => {
+    const options: NumericRound[] = [];
+    const used = Array(8).fill(false);
+    const courts: number[][] = [];
+    const addCourt = (court: number) => {
+      if (court === 3) {
+        options.push({
+          courts: courts.map((pair) => [...pair]),
+          rest: used.flatMap((taken, index) => (taken ? [] : [index])),
+        });
+        return;
+      }
+      const type = courtTypeAt(courtTypes, round + 1, court);
+      for (let a = 0; a < 8; a++) {
+        if (used[a]) continue;
+        for (let b = a + 1; b < 8; b++) {
+          if (used[b] || !validPair(a, b, type)) continue;
+          used[a] = used[b] = true;
+          courts.push([a, b]);
+          addCourt(court + 1);
+          courts.pop();
+          used[a] = used[b] = false;
+        }
+      }
+    };
+    addCourt(0);
+    return options;
+  };
+  const roundOptions = Array.from({ length: 8 }, (_, round) =>
+    optionsForRound(round),
+  );
+  if (roundOptions.some((options) => !options.length)) return null;
+  type State = {
+    rounds: NumericRound[];
+    rests: number[];
+    pairCounts: Map<string, number>;
+    previousRest: Set<number>;
+    previousPairs: Set<string>;
+    score: number;
+  };
+  let beam: State[] = [
+    {
+      rounds: [],
+      rests: Array(8).fill(0),
+      pairCounts: new Map(),
+      previousRest: new Set(),
+      previousPairs: new Set(),
+      score: 0,
+    },
+  ];
+  for (let round = 0; round < 8; round++) {
+    const remainingRounds = 7 - round;
+    const next: State[] = [];
+    for (const state of beam) {
+      for (const option of roundOptions[round]) {
+        if (option.rest.some((player) => state.rests[player] >= 2)) continue;
+        const rests = state.rests.map((count, player) =>
+          count + (option.rest.includes(player) ? 1 : 0),
+        );
+        if (rests.some((count) => 2 - count > remainingRounds)) continue;
+        const pairCounts = new Map(state.pairCounts);
+        const currentPairs = new Set<string>();
+        let score = state.score;
+        option.courts.forEach(([a, b]) => {
+          const key = [a, b].sort((x, y) => x - y).join("|");
+          const count = (pairCounts.get(key) ?? 0) + 1;
+          pairCounts.set(key, count);
+          currentPairs.add(key);
+          if (rules.avoidConsecutivePartners && state.previousPairs.has(key))
+            score -= 250;
+          if (rules.preferMaxTwo && count > 2) score -= 120;
+          if (rules.blockAboveThree && count > 3) score -= 2_000;
+          (playerRuleMap.get(key) ?? []).forEach((rule) => {
+            if (rule.ruleType === "Avoid") score -= 100_000;
+            else if (count <= rule.minimumGames) score += 30_000;
+          });
+        });
+        if (rules.avoidBackToBackRest && option.rest.some((p) => state.previousRest.has(p)))
+          score -= 500;
+        next.push({
+          rounds: [...state.rounds, option],
+          rests,
+          pairCounts,
+          previousRest: new Set(option.rest),
+          previousPairs: currentPairs,
+          score,
+        });
+      }
+    }
+    // Keep a diverse but bounded set of the strongest candidates. With only
+    // eight players this remains immediate on desktop and mobile.
+    next.sort((a, b) => b.score - a.score);
+    beam = next.slice(0, 320);
+    if (!beam.length) return null;
+  }
+  const best = beam.find((state) => state.rests.every((count) => count === 2));
+  if (!best) return null;
+  return best.rounds.map((round, index) => ({
+    round: index + 1,
+    courts: round.courts.map((pair) => pair.map((player) => roster[player].name)),
+    rest: round.rest.map((player) => roster[player].name),
+  }));
+}
 function buildLineup(
   roster: Player[],
   history: Match[],
@@ -299,26 +413,24 @@ function buildLineup(
         !roster.some((player) => player.gender === "M")))
   )
     return [];
+  const preferenceLineup = buildPreferenceLineup(
+    roster,
+    playerRules,
+    rules,
+    courtTypes,
+  );
+  if (preferenceLineup) return preferenceLineup;
   const fourWomen =
     roster.filter((player) => player.gender === "W").length === 4;
   const twoWomenDevelopment =
     roster.filter((player) => player.gender === "W").length === 2 &&
     roster.filter((player) => player.gender === "M").length === 6 &&
     isDevelopmentPattern(courtTypes);
-  const twoWomenPerformanceWithRequiredPair =
-    roster.filter((player) => player.gender === "W").length === 2 &&
-    roster.filter((player) => player.gender === "M").length === 6 &&
-    isPerformancePattern(courtTypes) &&
-    playerRules.some(
-      (rule) => rule.ruleType === "Required" && rule.minimumGames >= 3,
-    );
   const schedule = fourWomen
     ? fourWomenTemplate
     : twoWomenDevelopment
       ? twoWomenDevelopmentTemplate
-      : twoWomenPerformanceWithRequiredPair
-        ? requiredPairPerformanceTemplate
-        : template;
+      : template;
   const historyStats = new Map<
     string,
     { played: number; performance: number }
@@ -416,8 +528,6 @@ function buildLineup(
         used[index] ||
         (fourWomen && roster[index].gender !== (ordered.length < 4 ? "W" : "M")) ||
         (twoWomenDevelopment &&
-          roster[index].gender !== (ordered.length < 2 ? "W" : "M")) ||
-        (twoWomenPerformanceWithRequiredPair &&
           roster[index].gender !== (ordered.length < 2 ? "W" : "M"))
       )
         continue;
@@ -797,6 +907,7 @@ export default function Home() {
               publicSlug: string;
               blockWomenPairs?: boolean;
               lineupCourtTypes?: string;
+              lineupRules?: string;
             };
           }) => {
             if (cancelled) return;
@@ -811,6 +922,25 @@ export default function Home() {
               ...current,
               blockWomenPairs: result.settings.blockWomenPairs ?? true,
             }));
+            try {
+              const savedRules = JSON.parse(result.settings.lineupRules ?? "");
+              if (
+                savedRules &&
+                typeof savedRules === "object" &&
+                [
+                  "avoidConsecutivePartners",
+                  "preferMaxTwo",
+                  "blockAboveThree",
+                  "avoidBackToBackRest",
+                  "avoidLongStreaks",
+                ].every(
+                  (key) =>
+                    typeof (savedRules as Record<string, unknown>)[key] ===
+                    "boolean",
+                )
+              )
+                setRules((current) => ({ ...current, ...savedRules }));
+            } catch {}
             try {
               const saved = JSON.parse(result.settings.lineupCourtTypes ?? "");
               setCourtTypes(
@@ -1114,7 +1244,7 @@ export default function Home() {
   }, [seasonMatches]);
 
   const validation = useMemo(() => {
-    // An empty or partial lineup is not a player-rest violation. Previously
+    // An empty or partial lineup is not a player-rest violation.  Previously
     // it made the UI report eight misleading "rests 0 times" errors, hiding
     // the actual generation issue shown above the table.
     if (lineup.length !== 8)
@@ -1251,6 +1381,30 @@ export default function Home() {
         blockWomenPairs: !blockWomenPairs,
       }));
       flash("The rule could not be saved.");
+    }
+  }
+  async function setLineupPreference(key: Exclude<keyof RuleSettings, "blockWomenPairs">) {
+    const next = { ...rules, [key]: !rules[key] };
+    setRules(next);
+    const response = await fetch("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        teamName,
+        captainName,
+        category: teamCategory,
+        lineupRules: {
+          avoidConsecutivePartners: next.avoidConsecutivePartners,
+          preferMaxTwo: next.preferMaxTwo,
+          blockAboveThree: next.blockAboveThree,
+          avoidBackToBackRest: next.avoidBackToBackRest,
+          avoidLongStreaks: next.avoidLongStreaks,
+        },
+      }),
+    });
+    if (!response.ok) {
+      setRules(rules);
+      flash("The preference could not be saved.");
     }
   }
   async function saveCourtTypes(
@@ -3050,12 +3204,7 @@ export default function Home() {
                     <input
                       type="checkbox"
                       checked={rules[key]}
-                      onChange={() =>
-                        setRules((current) => ({
-                          ...current,
-                          [key]: !current[key],
-                        }))
-                      }
+                      onChange={() => setLineupPreference(key as Exclude<keyof RuleSettings, "blockWomenPairs">)}
                     />
                     <span>
                       <b>{rules[key] ? "✓" : ""}</b>
