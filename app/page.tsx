@@ -200,12 +200,19 @@ const performanceCourtTypes: CourtType[] = [
   "open",
   "open",
   "open",
+  "open",
+  "open",
   "mixed",
   "open",
   "open",
   "open",
-  "open",
-  "open",
+];
+// The original Performance preset placed the round-7 mixed match on court 1.
+// Keep it only to safely migrate untouched team presets to the corrected court 3.
+const legacyPerformanceCourtTypes: CourtType[] = [
+  "open", "open", "open", "mixed", "open", "open", "open", "open",
+  "mixed", "open", "open", "open", "mixed", "open", "open", "open",
+  "open", "open", "mixed", "open", "open", "open", "open", "open",
 ];
 const developmentCourtTypes: CourtType[] = [
   "mixed",
@@ -237,6 +244,8 @@ const courtTypesFor = (category: "Performance" | "Development" | "Senior") =>
   category === "Development"
     ? [...developmentCourtTypes]
     : [...performanceCourtTypes];
+const sameCourtTypes = (left: CourtType[], right: CourtType[]) =>
+  left.length === right.length && left.every((type, index) => type === right[index]);
 const courtTypeAt = (courtTypes: CourtType[], round: number, court: number) =>
   courtTypes[(round - 1) * 3 + court] ?? "open";
 const fourWomenTemplate = Array.from({ length: 8 }, (_, round) => {
@@ -1284,18 +1293,40 @@ export default function Home() {
             } catch {}
             try {
               const saved = JSON.parse(result.settings.lineupCourtTypes ?? "");
-              setCourtTypes(
+              const savedCourtTypes =
                 Array.isArray(saved) &&
-                  saved.length === 24 &&
-                  saved.every(
-                    (value: unknown) =>
-                      value === "open" ||
-                      value === "mixed" ||
-                      value === "women",
-                  )
-                  ? saved
-                  : courtTypesFor(category),
-              );
+                saved.length === 24 &&
+                saved.every(
+                  (value: unknown) =>
+                    value === "open" ||
+                    value === "mixed" ||
+                    value === "women",
+                )
+                  ? (saved as CourtType[])
+                  : null;
+              const needsPerformancePresetCorrection =
+                category === "Performance" &&
+                savedCourtTypes !== null &&
+                sameCourtTypes(savedCourtTypes, legacyPerformanceCourtTypes);
+              const nextCourtTypes = needsPerformancePresetCorrection
+                ? courtTypesFor(category)
+                : (savedCourtTypes ?? courtTypesFor(category));
+              setCourtTypes(nextCourtTypes);
+
+              // A format belongs to a team. Only update the exact old preset;
+              // any format a captain has changed remains untouched.
+              if (needsPerformancePresetCorrection) {
+                void fetch("/api/settings", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    teamName: result.settings.teamName,
+                    captainName: result.settings.captainName,
+                    category,
+                    lineupCourtTypes: nextCourtTypes,
+                  }),
+                });
+              }
             } catch {
               setCourtTypes(courtTypesFor(category));
             }
